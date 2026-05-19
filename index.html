@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>丘山行 · 領隊班表系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117;--surface:#181c27;--surface2:#1e2335;--border:#2a3050;
+  --text:#e8eaf0;--text2:#8892b0;--text3:#4a5470;
+  --green:#3dd68c;--green-dim:#1a4a35;--green-border:#2a7a55;
+  --blue:#5b9cf6;--blue-dim:#1a2e55;--blue-border:#2a4a8a;
+  --orange:#f5a623;--orange-dim:#3d2800;--orange-border:#7a5010;
+  --red:#f06b6b;--red-dim:#3d1515;--red-border:#7a2a2a;
+  --purple:#a78bfa;--purple-dim:#2d1f55;--purple-border:#5a3a9a;
+  --peach:#fb923c;--peach-dim:#3d1f10;--peach-border:#7a3a1a;
+  --lime:#84cc16;--lime-dim:#1f3010;--lime-border:#4a6a1a;
+  --radius:8px;--radius-lg:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+
+/* ── AUTH ── */
+#authScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:24px;}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:48px 40px;text-align:center;width:360px;}
+.auth-logo{font-size:28px;font-weight:700;color:var(--text);letter-spacing:-0.5px;margin-bottom:8px;}
+.auth-logo span{color:var(--green);}
+.auth-sub{color:var(--text2);font-size:13px;margin-bottom:32px;}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:12px 20px;background:#fff;color:#333;border:none;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;transition:opacity .15s;}
+.google-btn:hover{opacity:.9;}
+.google-btn svg{width:20px;height:20px;}
+
+/* ── LAYOUT ── */
+#app{display:none;height:100vh;flex-direction:column;}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;gap:16px;flex-shrink:0;}
+.logo{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-0.3px;}
+.logo span{color:var(--green);}
+.header-tabs{display:flex;gap:2px;flex:1;margin-left:16px;}
+.htab{padding:6px 14px;border-radius:var(--radius);font-size:13px;color:var(--text2);cursor:pointer;border:none;background:none;transition:all .15s;font-family:inherit;}
+.htab:hover{color:var(--text);background:var(--surface2);}
+.htab.active{color:var(--text);background:var(--surface2);}
+.user-info{display:flex;align-items:center;gap:10px;margin-left:auto;}
+.user-avatar{width:30px;height:30px;border-radius:50%;object-fit:cover;}
+.user-name{font-size:13px;color:var(--text2);}
+.admin-badge{font-size:10px;padding:2px 7px;border-radius:999px;background:var(--green-dim);color:var(--green);border:1px solid var(--green-border);}
+.logout-btn{font-size:12px;color:var(--text3);background:none;border:1px solid var(--border);border-radius:var(--radius);padding:4px 10px;cursor:pointer;transition:all .15s;font-family:inherit;}
+.logout-btn:hover{color:var(--text);border-color:var(--text3);}
+
+.main-content{flex:1;overflow:hidden;display:flex;}
+
+/* ── SCHEDULE TAB ── */
+#scheduleTab{display:flex;flex:1;overflow:hidden;}
+.left-panel{width:180px;min-width:180px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+.panel-title{padding:12px 14px 8px;font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;}
+.month-list{flex:1;overflow-y:auto;padding:4px 6px;}
+.mbtn{width:100%;text-align:left;padding:7px 10px;border:none;background:none;border-radius:var(--radius);cursor:pointer;font-size:13px;color:var(--text2);font-family:inherit;display:flex;justify-content:space-between;align-items:center;transition:all .15s;}
+.mbtn:hover{background:var(--surface2);color:var(--text);}
+.mbtn.active{background:var(--surface2);color:var(--text);font-weight:500;}
+.mbadge{font-size:10px;background:var(--blue-dim);color:var(--blue);padding:1px 6px;border-radius:999px;}
+.guide-panel{padding:10px 12px;border-top:1px solid var(--border);}
+.guide-panel label{font-size:11px;color:var(--text3);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px;}
+.guide-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;max-height:90px;overflow-y:auto;}
+.gchip{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;gap:3px;}
+.gchip.me{border-color:var(--green-border);color:var(--green);background:var(--green-dim);}
+.gchip button{border:none;background:none;cursor:pointer;color:inherit;font-size:13px;line-height:1;opacity:.6;}
+.gchip button:hover{opacity:1;}
+.add-guide{display:flex;gap:5px;}
+.add-guide input{flex:1;font-size:12px;padding:4px 8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;min-width:0;}
+.add-guide input:focus{outline:none;border-color:var(--blue-border);}
+.add-guide button{font-size:16px;border:none;background:none;cursor:pointer;color:var(--text3);padding:0 4px;transition:color .15s;}
+.add-guide button:hover{color:var(--text);}
+
+.schedule-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.sch-toolbar{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.sch-toolbar h3{font-size:15px;font-weight:600;flex:1;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;}
+.leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);}
+.lb{width:8px;height:8px;border-radius:2px;}
+.tbl-wrap{flex:1;overflow:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{position:sticky;top:0;z-index:2;background:var(--surface);padding:7px 5px;text-align:center;font-weight:500;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);border-right:1px solid var(--border);white-space:nowrap;letter-spacing:.5px;text-transform:uppercase;}
+thead th:first-child{text-align:left;padding-left:12px;min-width:64px;}
+thead th:nth-child(2){min-width:24px;}
+td{padding:2px 3px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);vertical-align:top;min-width:88px;}
+td:first-child{font-size:12px;color:var(--text2);padding-left:12px;white-space:nowrap;min-width:64px;vertical-align:middle;}
+td:nth-child(2){text-align:center;font-size:12px;min-width:24px;vertical-align:middle;}
+tr.sat td{background:#1a2030;}tr.sun td{background:#1f1a1a;}tr.hol td{background:#1f1510;}
+tr.sat td:first-child,tr.sat td:nth-child(2){color:var(--blue);}
+tr.sun td:first-child,tr.sun td:nth-child(2){color:var(--red);}
+tr.hol td:first-child{color:var(--orange);font-weight:500;}
+.cell{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
+.tag{display:inline-flex;align-items:center;gap:2px;padding:2px 5px;border-radius:4px;font-size:10px;line-height:1.4;max-width:100%;}
+.tag-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.tag-x{flex-shrink:0;cursor:pointer;opacity:.5;font-size:11px;transition:opacity .1s;}
+.tag-x:hover{opacity:1;}
+.t-trip{background:var(--green-dim);color:var(--green);border:1px solid var(--green-border);}
+.t-early{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue-border);}
+.t-late{background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange-border);}
+.t-leave{background:var(--red-dim);color:var(--red);border:1px solid var(--red-border);}
+.t-pre{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-border);}
+.t-hand{background:var(--peach-dim);color:var(--peach);border:1px solid var(--peach-border);}
+.t-review{background:var(--lime-dim);color:var(--lime);border:1px solid var(--lime-border);}
+.add-tag-btn{font-size:9px;color:var(--text3);border:1px dashed var(--border);border-radius:3px;padding:1px 5px;cursor:pointer;background:none;width:100%;text-align:left;font-family:inherit;transition:all .15s;}
+.add-tag-btn:hover{color:var(--text2);border-color:var(--text3);}
+.no-edit{pointer-events:none;opacity:.7;}
+
+/* ── QUERY TAB ── */
+#queryTab{display:none;flex:1;flex-direction:column;overflow:hidden;padding:20px;}
+.query-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:20px;}
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;}
+.q-card h4{font-size:12px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;}
+.q-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+select,input[type=text],input[type=month]{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:6px 10px;font-size:13px;font-family:inherit;outline:none;}
+select:focus,input:focus{border-color:var(--blue-border);}
+.q-btn{padding:6px 16px;font-size:12px;border-radius:var(--radius);border:1px solid var(--green-border);background:var(--green-dim);color:var(--green);cursor:pointer;font-family:inherit;transition:all .15s;font-weight:500;}
+.q-btn:hover{background:var(--green);color:#000;}
+.result-area{flex:1;overflow-y:auto;}
+.result-table{width:100%;border-collapse:collapse;font-size:13px;}
+.result-table th{background:var(--surface);padding:8px 12px;text-align:left;font-weight:500;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px;}
+.result-table td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text);}
+.result-table tr:hover td{background:var(--surface);}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+.stat-name{font-size:12px;color:var(--text2);margin-bottom:4px;}
+.stat-val{font-size:22px;font-weight:700;color:var(--green);}
+.stat-sub{font-size:11px;color:var(--text3);}
+.export-btn{padding:7px 18px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;}
+.export-btn:hover{color:var(--text);border-color:var(--text3);}
+
+/* ── ADMIN TAB ── */
+#adminTab{display:none;flex:1;overflow-y:auto;padding:20px;}
+.admin-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px;}
+.admin-section h4{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--text);}
+.user-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.user-row:last-child{border-bottom:none;}
+.user-row img{width:36px;height:36px;border-radius:50%;}
+.user-row-info{flex:1;}
+.user-row-name{font-size:14px;font-weight:500;}
+.user-row-email{font-size:12px;color:var(--text2);}
+.role-select{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:4px 8px;font-size:12px;font-family:inherit;}
+.save-role-btn{font-size:12px;padding:4px 12px;border-radius:var(--radius);border:1px solid var(--green-border);background:var(--green-dim);color:var(--green);cursor:pointer;font-family:inherit;}
+
+/* ── POPUP ── */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;}
+.pop{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;width:280px;}
+.pop h4{font-size:14px;font-weight:600;margin-bottom:12px;}
+.type-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px;}
+.tbtn{font-size:11px;padding:5px 4px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);cursor:pointer;color:var(--text2);font-family:inherit;text-align:center;transition:all .15s;}
+.tbtn.s-trip{background:var(--green-dim);color:var(--green);border-color:var(--green-border);}
+.tbtn.s-early{background:var(--blue-dim);color:var(--blue);border-color:var(--blue-border);}
+.tbtn.s-late{background:var(--orange-dim);color:var(--orange);border-color:var(--orange-border);}
+.tbtn.s-leave{background:var(--red-dim);color:var(--red);border-color:var(--red-border);}
+.tbtn.s-pre{background:var(--purple-dim);color:var(--purple);border-color:var(--purple-border);}
+.tbtn.s-hand{background:var(--peach-dim);color:var(--peach);border-color:var(--peach-border);}
+.tbtn.s-review{background:var(--lime-dim);color:var(--lime);border-color:var(--lime-border);}
+.pop input{width:100%;font-size:13px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;margin-bottom:12px;}
+.pop input:focus{outline:none;border-color:var(--blue-border);}
+.pop-hint{font-size:11px;color:var(--text3);margin-bottom:8px;}
+.pop-btns{display:flex;gap:8px;justify-content:flex-end;}
+.pop-btns button{font-size:12px;padding:6px 16px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit;transition:all .15s;}
+.pop-btns .confirm{border-color:var(--green-border);background:var(--green-dim);color:var(--green);}
+.pop-btns .confirm:hover{background:var(--green);color:#000;}
+
+.toast{position:fixed;bottom:20px;right:20px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;font-size:13px;color:var(--text);z-index:999;animation:fadeIn .2s ease;pointer-events:none;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.loading{position:fixed;inset:0;background:rgba(15,17,23,.8);z-index:500;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text2);}
+</style>
+</head>
+<body>
+
+<!-- Auth -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">丘山<span>行</span></div>
+    <div class="auth-sub">領隊班表管理系統</div>
+    <button class="google-btn" id="googleLoginBtn">
+      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      使用 Google 帳號登入
+    </button>
+  </div>
+</div>
+
+<div id="loadingScreen" class="loading" style="display:none">載入中...</div>
+
+<!-- App -->
+<div id="app">
+  <header>
+    <div class="logo">丘山<span>行</span></div>
+    <div class="header-tabs">
+      <button class="htab active" data-tab="schedule">班表</button>
+      <button class="htab" data-tab="query">查詢 / 統計</button>
+      <button class="htab admin-only" data-tab="admin" style="display:none">人員管理</button>
+    </div>
+    <div class="user-info">
+      <img class="user-avatar" id="userAvatar" src="" alt=""/>
+      <span class="user-name" id="userName"></span>
+      <span class="admin-badge" id="adminBadge" style="display:none">管理員</span>
+      <button class="logout-btn" id="logoutBtn">登出</button>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <!-- Schedule Tab -->
+    <div id="scheduleTab">
+      <div class="left-panel">
+        <div class="panel-title">月份</div>
+        <div class="month-list" id="mlist"></div>
+        <div class="guide-panel" id="guidePanel">
+          <label>領隊名單</label>
+          <div class="guide-chips" id="gchips"></div>
+          <div class="add-guide" id="addGuideRow">
+            <input type="text" id="ngName" placeholder="新增領隊" maxlength="10"/>
+            <button id="ngBtn">＋</button>
+          </div>
+        </div>
+      </div>
+      <div class="schedule-main">
+        <div class="sch-toolbar">
+          <h3 id="mTitle"></h3>
+          <div class="legend">
+            <div class="leg"><div class="lb" style="background:var(--green)"></div>行程</div>
+            <div class="leg"><div class="lb" style="background:var(--blue)"></div>提早去</div>
+            <div class="leg"><div class="lb" style="background:var(--orange)"></div>延回</div>
+            <div class="leg"><div class="lb" style="background:var(--red)"></div>請假</div>
+            <div class="leg"><div class="lb" style="background:var(--purple)"></div>行前</div>
+            <div class="leg"><div class="lb" style="background:var(--peach)"></div>交團</div>
+            <div class="leg"><div class="lb" style="background:var(--lime)"></div>檢討</div>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Query Tab -->
+    <div id="queryTab">
+      <div class="query-grid">
+        <div class="q-card">
+          <h4>查詢特定領隊出團紀錄</h4>
+          <div class="q-row">
+            <select id="qGuide"><option value="">選擇領隊</option></select>
+            <input type="month" id="qMonth" value="2026-07"/>
+            <button class="q-btn" onclick="queryGuide()">查詢</button>
+          </div>
+        </div>
+        <div class="q-card">
+          <h4>查詢特定日期誰有空</h4>
+          <div class="q-row">
+            <input type="text" id="qDate" placeholder="如 2026/9/5" style="width:130px"/>
+            <button class="q-btn" onclick="queryFree()">查詢</button>
+          </div>
+        </div>
+        <div class="q-card">
+          <h4>統計出團天數</h4>
+          <div class="q-row">
+            <input type="month" id="statMonthStart" value="2026-07"/>
+            <span style="color:var(--text2);font-size:12px">至</span>
+            <input type="month" id="statMonthEnd" value="2026-12"/>
+            <button class="q-btn" onclick="queryStat()">統計</button>
+          </div>
+        </div>
+        <div class="q-card">
+          <h4>匯出 Excel</h4>
+          <div class="q-row">
+            <input type="month" id="exportMonth" value="2026-07"/>
+            <button class="q-btn" onclick="exportExcel()">匯出</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+        <div id="queryTitle" style="flex:1;font-size:14px;font-weight:600;color:var(--text2);"></div>
+      </div>
+      <div class="result-area" id="resultArea"></div>
+    </div>
+
+    <!-- Admin Tab -->
+    <div id="adminTab">
+      <div class="admin-section">
+        <h4>人員權限管理</h4>
+        <div id="userList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Popup -->
+<div id="ov" class="ov" style="display:none">
+  <div class="pop">
+    <h4 id="popTitle">新增狀態</h4>
+    <div class="type-grid" id="typeGrid"></div>
+    <div class="pop-hint" id="popHint"></div>
+    <input type="text" id="popInput" placeholder="說明（可空白）" maxlength="30"/>
+    <div class="pop-btns">
+      <button id="pCancel">取消</button>
+      <button class="confirm" id="pConfirm">確認</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase + App Logic -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCi_-ARDDU1KadQ6vNkjSISNcqMnBPA6Mo",
+  authDomain: "qiushan-schedule.firebaseapp.com",
+  projectId: "qiushan-schedule",
+  storageBucket: "qiushan-schedule.firebasestorage.app",
+  messagingSenderId: "617610293986",
+  appId: "1:617610293986:web:989f3d8b493bda0ffd24bb"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+// ── State ──
+const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12];
+const MN = {1:'1月',2:'2月',3:'3月',4:'4月',5:'5月',6:'6月',7:'7月',8:'8月',9:'9月',10:'10月',11:'11月',12:'12月'};
+const WD = ['一','二','三','四','五','六','日'];
+const HOL = {'1/1':'元旦','2/8':'除夕','2/9':'春節','2/10':'春節','2/11':'春節','2/12':'春節','2/13':'春節','2/28':'和平紀念日','4/4':'兒童節','4/5':'清明節','5/1':'勞動節','5/31':'端午節','9/19':'中秋節','10/10':'國慶日'};
+const TYPES = {
+  trip:{label:'行程',cls:'t-trip',sel:'s-trip'},
+  early:{label:'提早去',cls:'t-early',sel:'s-early'},
+  late:{label:'延回',cls:'t-late',sel:'s-late'},
+  leave:{label:'請假',cls:'t-leave',sel:'s-leave'},
+  pre:{label:'行前',cls:'t-pre',sel:'s-pre',needTime:true},
+  hand:{label:'交團',cls:'t-hand',sel:'s-hand',needTime:true},
+  review:{label:'檢討',cls:'t-review',sel:'s-review',needTime:true}
+};
+const SINGLE = ['trip','early','late','leave'];
+
+let curMonth = 7;
+let guides = [];
+let scheduleData = {};
+let currentUser = null;
+let isAdmin = false;
+let userRole = 'viewer';
+let popState = {m:0,d:0,g:'',type:'trip'};
+let unsubSchedule = null;
+let unsubGuides = null;
+
+// ── Helpers ──
+const dim = m => new Date(2026, m, 0).getDate();
+const wday = (m,d) => { const w = new Date(2026,m-1,d).getDay(); return w===0?6:w-1; };
+const hol = (m,d) => HOL[`${m}/${d}`]||null;
+
+function toast(msg){ const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500); }
+function show(id){document.getElementById(id).style.display='flex';}
+function hide(id){document.getElementById(id).style.display='none';}
+
+// ── Auth ──
+document.getElementById('googleLoginBtn').onclick = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch(e){ toast('登入失敗：'+e.message); }
+};
+document.getElementById('logoutBtn').onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, async user => {
+  if(user){
+    currentUser = user;
+    document.getElementById('userAvatar').src = user.photoURL||'';
+    document.getElementById('userName').textContent = user.displayName||user.email;
+    show('loadingScreen');
+    // Get or create user doc
+    const userRef = doc(db,'users',user.uid);
+    const userSnap = await getDoc(userRef);
+    if(!userSnap.exists()){
+      // First user becomes admin
+      const allUsers = await getDocs(collection(db,'users'));
+      const role = allUsers.empty ? 'admin' : 'guide';
+      await setDoc(userRef,{email:user.email,name:user.displayName||user.email,photo:user.photoURL||'',role,uid:user.uid});
+      userRole = role;
+    } else {
+      userRole = userSnap.data().role || 'guide';
+    }
+    isAdmin = userRole === 'admin';
+    if(isAdmin){ show('adminBadge'); document.querySelector('[data-tab="admin"]').style.display=''; }
+    setupListeners();
+    hide('authScreen');
+    hide('loadingScreen');
+    show('app');
+  } else {
+    currentUser = null; isAdmin = false;
+    if(unsubSchedule){ unsubSchedule(); unsubSchedule=null; }
+    if(unsubGuides){ unsubGuides(); unsubGuides=null; }
+    show('authScreen');
+    hide('app');
+  }
+});
+
+// ── Firestore Listeners ──
+function setupListeners(){
+  // Guides
+  const guidesRef = doc(db,'config','guides');
+  unsubGuides = onSnapshot(guidesRef, snap => {
+    guides = snap.exists() ? (snap.data().list||[]) : [];
+    renderSidebar(); renderTable(); updateQueryGuideSelect();
+  });
+  // Schedule
+  const schedRef = doc(db,'schedule','2026');
+  unsubSchedule = onSnapshot(schedRef, snap => {
+    scheduleData = snap.exists() ? (snap.data().entries||{}) : {};
+    renderSidebar(); renderTable();
+  });
+}
+
+async function saveGuides(){ await setDoc(doc(db,'config','guides'),{list:guides}); }
+async function saveSchedule(){ await setDoc(doc(db,'schedule','2026'),{entries:scheduleData}); }
+
+// ── Can Edit ──
+function canEdit(g){
+  if(isAdmin) return true;
+  if(userRole === 'guide'){
+    // Guide can only edit their own column
+    const guideNames = guides;
+    const myName = currentUser.displayName || currentUser.email;
+    return g === myName;
+  }
+  return false;
+}
+
+// ── Render ──
+function renderSidebar(){
+  const ml = document.getElementById('mlist');
+  ml.innerHTML='';
+  MONTHS.forEach(m=>{
+    const n = Object.keys(scheduleData).filter(k=>k.startsWith(`${m}|`)&&scheduleData[k]?.length>0).length;
+    const btn=document.createElement('button');
+    btn.className='mbtn'+(m===curMonth?' active':'');
+    btn.innerHTML=MN[m]+(n>0?` <span class="mbadge">${n}</span>`:'');
+    btn.onclick=()=>{curMonth=m;renderSidebar();renderTable();};
+    ml.appendChild(btn);
+  });
+  // Guide chips
+  const gc=document.getElementById('gchips');gc.innerHTML='';
+  const myName = currentUser?.displayName||currentUser?.email||'';
+  guides.forEach(g=>{
+    const chip=document.createElement('span');
+    chip.className='gchip'+(g===myName?' me':'');
+    chip.innerHTML=g+(isAdmin?`<button data-g="${g}">×</button>`:'');
+    if(isAdmin) chip.querySelector('button').onclick=()=>removeGuide(g);
+    gc.appendChild(chip);
+  });
+  document.getElementById('addGuideRow').style.display = isAdmin?'flex':'none';
+}
+
+function renderTable(){
+  document.getElementById('mTitle').textContent=`2026年 ${MN[curMonth]}`;
+  const m=curMonth, n=dim(m);
+  document.getElementById('thead').innerHTML=`<tr><th>日期</th><th>星期</th>${guides.map(g=>`<th>${g}</th>`).join('')}</tr>`;
+  const tb=document.getElementById('tbody');tb.innerHTML='';
+  for(let d=1;d<=n;d++){
+    const w=wday(m,d),isSat=w===5,isSun=w===6,h=hol(m,d);
+    const tr=document.createElement('tr');
+    tr.className=h?'hol':isSat?'sat':isSun?'sun':'';
+    const dl=document.createElement('td');dl.textContent=h?`${m}/${d} ${h}`:`${m}/${d}`;tr.appendChild(dl);
+    const wl=document.createElement('td');wl.textContent=WD[w];tr.appendChild(wl);
+    guides.forEach(g=>{
+      const td=document.createElement('td');
+      const cell=document.createElement('div');cell.className='cell';
+      const entries=scheduleData[`${m}|${d}|${g}`]||[];
+      entries.forEach((e,i)=>{
+        const tag=document.createElement('div');tag.className='tag '+TYPES[e.type].cls;
+        const lbl=e.text||TYPES[e.type].label;
+        const canDel=canEdit(g);
+        tag.innerHTML=`<span class="tag-lbl" title="${lbl}">${lbl}</span>`+(canDel?`<span class="tag-x" data-m="${m}" data-d="${d}" data-g="${g}" data-i="${i}">×</span>`:'');
+        if(canDel) tag.querySelector('.tag-x').onclick=ev=>{ev.stopPropagation();removeEntry(m,d,g,i);};
+        cell.appendChild(tag);
+      });
+      if(canEdit(g)){
+        const ab=document.createElement('button');ab.className='add-tag-btn';ab.textContent='＋';
+        ab.onclick=()=>openPop(m,d,g);
+        cell.appendChild(ab);
+      }
+      td.appendChild(cell);tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  }
+}
+
+// ── Guide CRUD ──
+async function removeGuide(g){
+  guides=guides.filter(x=>x!==g);
+  await saveGuides();
+  toast(`已移除「${g}」`);
+}
+document.getElementById('ngBtn').onclick=async()=>{
+  const inp=document.getElementById('ngName');const n=inp.value.trim();
+  if(!n||!isAdmin)return;
+  if(guides.includes(n)){toast('已存在');inp.value='';return;}
+  guides.push(n);inp.value='';
+  await saveGuides();toast(`已新增「${n}」`);
+};
+document.getElementById('ngName').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('ngBtn').click();});
+
+// ── Entry CRUD ──
+async function removeEntry(m,d,g,i){
+  const k=`${m}|${d}|${g}`;
+  const arr=(scheduleData[k]||[]).slice();arr.splice(i,1);
+  if(arr.length===0)delete scheduleData[k]; else scheduleData[k]=arr;
+  await saveSchedule();
+}
+
+function openPop(m,d,g){
+  popState={m,d,g,type:'trip'};
+  document.getElementById('popTitle').textContent=`${g}  ${m}/${d}`;
+  document.getElementById('popInput').value='';
+  document.getElementById('popHint').textContent='';
+  const tg=document.getElementById('typeGrid');tg.innerHTML='';
+  Object.entries(TYPES).forEach(([t,info])=>{
+    const btn=document.createElement('button');
+    btn.className='tbtn'+(t==='trip'?' s-trip':'');btn.textContent=info.label;
+    btn.onclick=()=>{
+      popState.type=t;
+      tg.querySelectorAll('.tbtn').forEach(b=>b.className='tbtn');
+      btn.className=`tbtn ${info.sel}`;
+      document.getElementById('popHint').textContent=info.needTime?'格式：14:00 團名':'';
+      document.getElementById('popInput').placeholder=info.needTime?'14:00 團名':'說明（可空白）';
+    };
+    tg.appendChild(btn);
+  });
+  document.getElementById('ov').style.display='flex';
+  setTimeout(()=>document.getElementById('popInput').focus(),50);
+}
+document.getElementById('pCancel').onclick=()=>document.getElementById('ov').style.display='none';
+document.getElementById('ov').onclick=e=>{if(e.target===document.getElementById('ov'))document.getElementById('ov').style.display='none';};
+document.getElementById('pConfirm').onclick=async()=>{
+  const text=document.getElementById('popInput').value.trim();
+  const{m,d,g,type}=popState;
+  const k=`${m}|${d}|${g}`;
+  const arr=(scheduleData[k]||[]).slice();
+  if(SINGLE.includes(type)){const idx=arr.findIndex(e=>SINGLE.includes(e.type));if(idx>=0)arr.splice(idx,1);}
+  arr.push({type,text:text||TYPES[type].label});
+  scheduleData[k]=arr;
+  document.getElementById('ov').style.display='none';
+  await saveSchedule();
+  toast('已儲存');
+};
+document.getElementById('popInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pConfirm').click();});
+
+// ── Tab switching ──
+document.querySelectorAll('.htab').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.htab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab=btn.dataset.tab;
+    document.getElementById('scheduleTab').style.display=tab==='schedule'?'flex':'none';
+    document.getElementById('queryTab').style.display=tab==='query'?'flex':'none';
+    document.getElementById('adminTab').style.display=tab==='admin'?'block':'none';
+    if(tab==='admin')loadAdminUsers();
+    if(tab==='query')updateQueryGuideSelect();
+  };
+});
+
+// ── Query Functions ──
+function updateQueryGuideSelect(){
+  const sel=document.getElementById('qGuide');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">選擇領隊</option>';
+  guides.forEach(g=>{const o=document.createElement('option');o.value=g;o.textContent=g;sel.appendChild(o);});
+  if(cur)sel.value=cur;
+}
+
+window.queryGuide=function(){
+  const g=document.getElementById('qGuide').value;
+  const mv=document.getElementById('qMonth').value;
+  if(!g||!mv)return;
+  const[y,ms]=mv.split('-');const m=parseInt(ms);
+  document.getElementById('queryTitle').textContent=`${g} — ${m}月出團紀錄`;
+  const rows=[];
+  const n=dim(m);
+  for(let d=1;d<=n;d++){
+    const entries=scheduleData[`${m}|${d}|${g}`]||[];
+    entries.forEach(e=>{
+      rows.push({date:`${m}/${d}`,wd:WD[wday(m,d)],type:TYPES[e.type].label,text:e.text||''});
+    });
+  }
+  const area=document.getElementById('resultArea');
+  if(!rows.length){area.innerHTML='<div style="color:var(--text2);padding:20px">本月無紀錄</div>';return;}
+  area.innerHTML=`<table class="result-table"><thead><tr><th>日期</th><th>星期</th><th>類型</th><th>說明</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.date}</td><td>${r.wd}</td><td>${r.type}</td><td>${r.text}</td></tr>`).join('')}</tbody></table>`;
+};
+
+window.queryFree=function(){
+  const ds=document.getElementById('qDate').value.trim();
+  const match=ds.match(/(\d{1,2})[\/\-](\d{1,2})/);
+  if(!match)return;
+  const m=parseInt(match[1]),d=parseInt(match[2]);
+  document.getElementById('queryTitle').textContent=`${m}/${d} — 有空的領隊`;
+  const busy=new Set();
+  guides.forEach(g=>{if((scheduleData[`${m}|${d}|${g}`]||[]).length>0)busy.add(g);});
+  const free=guides.filter(g=>!busy.has(g));
+  const area=document.getElementById('resultArea');
+  area.innerHTML=`
+    <div style="display:flex;gap:20px;flex-wrap:wrap;">
+      <div><div style="font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px">有空 (${free.length})</div>${free.map(g=>`<div style="padding:4px 0;color:var(--green)">${g}</div>`).join('')||'<div style="color:var(--text2)">無</div>'}</div>
+      <div><div style="font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px">有行程 (${busy.size})</div>${[...busy].map(g=>`<div style="padding:4px 0;color:var(--red)">${g}</div>`).join('')||'<div style="color:var(--text2)">無</div>'}</div>
+    </div>`;
+};
+
+window.queryStat=function(){
+  const ms=document.getElementById('statMonthStart').value;
+  const me=document.getElementById('statMonthEnd').value;
+  if(!ms||!me)return;
+  const[,ms2]=ms.split('-');const[,me2]=me.split('-');
+  const mStart=parseInt(ms2),mEnd=parseInt(me2);
+  document.getElementById('queryTitle').textContent=`${mStart}月－${mEnd}月 出團統計`;
+  const stats={};
+  guides.forEach(g=>{stats[g]={days:0,trips:0};});
+  for(let m=mStart;m<=mEnd;m++){
+    const n=dim(m);
+    for(let d=1;d<=n;d++){
+      guides.forEach(g=>{
+        const entries=scheduleData[`${m}|${d}|${g}`]||[];
+        const hasTrip=entries.some(e=>e.type==='trip');
+        if(hasTrip){stats[g].days++;if(d===1||!(scheduleData[`${m}|${d-1}|${g}`]||[]).some(e=>e.type==='trip'))stats[g].trips++;}
+      });
+    }
+  }
+  const sorted=guides.slice().sort((a,b)=>stats[b].days-stats[a].days);
+  const area=document.getElementById('resultArea');
+  area.innerHTML=`
+    <div class="stat-grid">${sorted.filter(g=>stats[g].days>0).map(g=>`
+      <div class="stat-card">
+        <div class="stat-name">${g}</div>
+        <div class="stat-val">${stats[g].days}</div>
+        <div class="stat-sub">天 / ${stats[g].trips} 趟</div>
+      </div>`).join('')}</div>
+    <table class="result-table"><thead><tr><th>領隊</th><th>出團天數</th><th>出團趟數</th></tr></thead>
+    <tbody>${sorted.map(g=>`<tr><td>${g}</td><td>${stats[g].days}</td><td>${stats[g].trips}</td></tr>`).join('')}</tbody></table>`;
+};
+
+window.exportExcel=function(){
+  const mv=document.getElementById('exportMonth').value;
+  if(!mv)return;
+  const[,ms]=mv.split('-');const m=parseInt(ms);
+  const n=dim(m);
+  let csv=`日期,星期,${guides.join(',')}\n`;
+  for(let d=1;d<=n;d++){
+    const h=hol(m,d);
+    const row=[`${m}/${d}${h?' '+h:''}`,WD[wday(m,d)]];
+    guides.forEach(g=>{
+      const entries=scheduleData[`${m}|${d}|${g}`]||[];
+      row.push(entries.map(e=>e.text||TYPES[e.type].label).join(' / '));
+    });
+    csv+=row.map(c=>`"${c}"`).join(',')+'\n';
+  }
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`丘山行班表_2026_${m}月.csv`;a.click();
+  URL.revokeObjectURL(url);
+  toast('已匯出 CSV（可用 Excel 開啟）');
+};
+
+// ── Admin ──
+async function loadAdminUsers(){
+  const snap=await getDocs(collection(db,'users'));
+  const ul=document.getElementById('userList');ul.innerHTML='';
+  snap.forEach(d=>{
+    const u=d.data();
+    const row=document.createElement('div');row.className='user-row';
+    row.innerHTML=`
+      <img src="${u.photo||''}" onerror="this.style.display='none'" style="width:36px;height:36px;border-radius:50%;"/>
+      <div class="user-row-info"><div class="user-row-name">${u.name||''}</div><div class="user-row-email">${u.email||''}</div></div>
+      <select class="role-select" data-uid="${d.id}">
+        <option value="admin" ${u.role==='admin'?'selected':''}>管理員</option>
+        <option value="guide" ${u.role==='guide'?'selected':''}>領隊</option>
+        <option value="viewer" ${u.role==='viewer'?'selected':''}>檢視</option>
+      </select>
+      <button class="save-role-btn" data-uid="${d.id}">儲存</button>`;
+    row.querySelector('.save-role-btn').onclick=async()=>{
+      const role=row.querySelector('.role-select').value;
+      await setDoc(doc(db,'users',d.id),{...u,role});
+      toast('已更新權限');
+    };
+    ul.appendChild(row);
+  });
+}
+</script>
+</body>
+</html>
