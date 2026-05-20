@@ -987,13 +987,15 @@ async function execCmd(raw){
     }
     // parse guides from rest (after date/days)
     const restForGuides=rest.replace(rangeM?rangeM[0]:singleM[0],'').replace(dayM?dayM[0]:'','').trim();
-    const guideNames=restForGuides.split(/\s+/).map(p=>findGuide(p)).filter(Boolean);
+    const guideNames=restForGuides.split(/\s+/).filter(Boolean).map(p=>findGuide(p)).filter(Boolean);
+    // deduplicate
+    const uniqueGuides=[...new Set(guideNames)];
     let filled=0;
     let cur=new Date(2026,startM-1,startD);
     const endDt=new Date(2026,endM-1,endD);
     while(cur<=endDt){
       const m=cur.getMonth()+1,d=cur.getDate();
-      for(const g of (guideNames.length?guideNames:['_placeholder'])){
+      for(const g of (uniqueGuides.length?uniqueGuides:['_placeholder'])){
         if(g==='_placeholder') continue;
         const k=`${m}|${d}|${g}`;
         if(!scheduleData[k]) scheduleData[k]=[];
@@ -1005,7 +1007,7 @@ async function execCmd(raw){
     }
     if(curMonth!==startM) curMonth=startM;
     await saveSchedule();
-    const gStr=guideNames.length?` 領隊：${guideNames.join('、')}`:'（未指定領隊，可之後再填）';
+    const gStr=uniqueGuides.length?` 領隊：${uniqueGuides.join('、')}`:'（未指定領隊，可之後再填）';
     cmdLog(`✅ 已新增「${tripName}」${startM}/${startD}~${endM}/${endD}${gStr}，共${filled}筆`,'cmd-ok'); return;
   }
 
