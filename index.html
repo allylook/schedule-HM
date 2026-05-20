@@ -82,19 +82,23 @@ header{background:#1f5c9e;border-bottom:1px solid #1a4f8a;padding:0 20px;height:
 .tbl-wrap{flex:1;overflow:auto;background:#fff;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 thead th{position:sticky;top:0;z-index:2;background:#e8edf5;padding:7px 5px;text-align:center;font-weight:600;font-size:11px;color:var(--text);border-bottom:2px solid #b0bcd0;border-right:1px solid var(--border);white-space:nowrap;letter-spacing:.3px;}
-thead th:first-child{text-align:left;padding-left:12px;min-width:64px;}
-thead th:nth-child(2){min-width:28px;}
+thead th:first-child{text-align:left;padding-left:12px;min-width:64px;position:sticky;left:0;z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.06);}
+thead th:nth-child(2){min-width:28px;position:sticky;left:64px;z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.04);}
 td{padding:3px 4px;border-bottom:1px solid #e8eaed;border-right:1px solid #e8eaed;vertical-align:top;min-width:88px;background:#fff;}
-td:first-child{font-size:12px;color:var(--text);padding-left:12px;white-space:nowrap;min-width:64px;vertical-align:middle;font-weight:500;}
-td:nth-child(2){text-align:center;font-size:12px;min-width:28px;vertical-align:middle;color:var(--text2);}
+td:first-child{font-size:12px;color:var(--text);padding-left:12px;white-space:nowrap;min-width:64px;vertical-align:middle;font-weight:500;position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.06);}
+td:nth-child(2){text-align:center;font-size:12px;min-width:28px;vertical-align:middle;color:var(--text2);position:sticky;left:64px;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.04);}
 tr.sat td{background:#ddeeff;}tr.sun td{background:#ffeedd;}tr.hol td{background:#ffe8cc;}
-tr.sat td:first-child,tr.sat td:nth-child(2){color:#1557a0;font-weight:500;}
-tr.sun td:first-child,tr.sun td:nth-child(2){color:#c0392b;font-weight:500;}
-tr.hol td:first-child{color:#8a4800;font-weight:600;}
+tr.sat td:first-child,tr.sat td:nth-child(2){color:#1557a0;font-weight:500;background:#ddeeff;}
+tr.sun td:first-child,tr.sun td:nth-child(2){color:#c0392b;font-weight:500;background:#ffeedd;}
+tr.hol td:first-child,tr.hol td:nth-child(2){color:#8a4800;font-weight:600;background:#ffe8cc;}
 tbody tr:hover td{background:#eef4ff;}
+tbody tr:hover td:first-child,tbody tr:hover td:nth-child(2){background:#eef4ff;}
 tr.sat:hover td{background:#cce0ff;}
+tr.sat:hover td:first-child,tr.sat:hover td:nth-child(2){background:#cce0ff;}
 tr.sun:hover td{background:#ffddd0;}
+tr.sun:hover td:first-child,tr.sun:hover td:nth-child(2){background:#ffddd0;}
 tr.hol:hover td{background:#ffd5aa;}
+tr.hol:hover td:first-child,tr.hol:hover td:nth-child(2){background:#ffd5aa;}
 .cell{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
 .tag{display:inline-flex;align-items:center;gap:2px;padding:2px 5px;border-radius:4px;font-size:10px;line-height:1.4;max-width:100%;}
 .tag-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
@@ -349,8 +353,30 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
   <div class="pop">
     <h4 id="popTitle">新增狀態</h4>
     <div class="type-grid" id="typeGrid"></div>
-    <div class="pop-hint" id="popHint"></div>
-    <input type="text" id="popInput" placeholder="說明（可空白）" maxlength="30"/>
+    <!-- 會議專用欄位 -->
+    <div id="meetingFields" style="display:none;margin-bottom:10px;">
+      <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+        <div style="font-size:11px;color:var(--text2);white-space:nowrap;">時間</div>
+        <input type="text" id="popTime" placeholder="如 10:00（回看可空白）" maxlength="10" style="flex:1;font-size:12px;padding:5px 8px;border-radius:var(--radius);border:1px solid var(--border);background:#fff;color:var(--text);font-family:inherit;"/>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+        <div style="font-size:11px;color:var(--text2);white-space:nowrap;">對象</div>
+        <input type="text" id="popTarget" placeholder="如 TMB-G1（可空白）" maxlength="20" style="flex:1;font-size:12px;padding:5px 8px;border-radius:var(--radius);border:1px solid var(--border);background:#fff;color:var(--text);font-family:inherit;"/>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <div style="font-size:11px;color:var(--text2);white-space:nowrap;">方式</div>
+        <div style="display:flex;gap:6px;">
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;cursor:pointer;"><input type="radio" name="meetMode" value="現場" checked> 現場</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;cursor:pointer;"><input type="radio" name="meetMode" value="線上"> 線上</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;cursor:pointer;"><input type="radio" name="meetMode" value="回看"> 回看</label>
+        </div>
+      </div>
+    </div>
+    <!-- 一般欄位 -->
+    <div id="normalFields">
+      <div class="pop-hint" id="popHint"></div>
+      <input type="text" id="popInput" placeholder="說明（可空白）" maxlength="30"/>
+    </div>
     <div class="pop-btns">
       <button id="pCancel">取消</button>
       <button class="confirm" id="pConfirm">確認</button>
@@ -374,14 +400,11 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
   <div class="help-section">
     <h5>班表操作</h5>
     <div class="help-row"><span class="help-cmd">Chris 9/5 TMB-G1</span><span class="help-desc">填入行程</span></div>
-    <div class="help-row"><span class="help-cmd">Chris 9/5 行前 14:00 TMB-G1</span><span class="help-desc">填入行前會議</span></div>
-    <div class="help-row"><span class="help-cmd">Chris 9/5 交團 10:00 TMB-G1</span><span class="help-desc">填入交團</span></div>
-    <div class="help-row"><span class="help-cmd">Chris 9/5 檢討 16:00 TMB-G1</span><span class="help-desc">填入檢討</span></div>
-    <div class="help-row"><span class="help-cmd">Chris 9/5 延回</span><span class="help-desc">標記延回</span></div>
-    <div class="help-row"><span class="help-cmd">Chris 9/5 提早去</span><span class="help-desc">標記提早去</span></div>
-    <div class="help-row"><span class="help-cmd">Chris 9/5 請假</span><span class="help-desc">標記請假</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 行前 10:00 TMB-G1</span><span class="help-desc">填入行前（現場）</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 行前 10:00 TMB-G1 線上</span><span class="help-desc">填入行前（線上）</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 行前 TMB-G1 回看</span><span class="help-desc">填入行前（回看，不需時間）</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 延回 / 提早去 / 請假</span><span class="help-desc">標記狀態</span></div>
     <div class="help-row"><span class="help-cmd">/清除 Chris 9/5 行程</span><span class="help-desc">清除特定類型</span></div>
-    <div class="help-row"><span class="help-cmd">/清除 Chris 9/5</span><span class="help-desc">清除該格全部</span></div>
     <div class="help-row"><span class="help-cmd">/批次 Chris 9/5~9/13 TMB-G1</span><span class="help-desc">批次填入日期範圍</span></div>
   </div>
   <div class="help-section">
@@ -389,16 +412,24 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
     <div class="help-row"><span class="help-cmd">/新增領隊 Amy</span><span class="help-desc">新增領隊</span></div>
     <div class="help-row"><span class="help-cmd">/刪除領隊 Amy</span><span class="help-desc">刪除領隊及所有資料</span></div>
     <div class="help-row"><span class="help-cmd">/改名 建源 阿源</span><span class="help-desc">領隊改名（同步所有資料）</span></div>
+    <div class="help-row"><span class="help-cmd">/換領隊 Chris Ally TMB-G1</span><span class="help-desc">換領隊同時更新行前/交團/檢討</span></div>
     <div class="help-row"><span class="help-cmd">/名單</span><span class="help-desc">顯示所有領隊</span></div>
+  </div>
+  <div class="help-section">
+    <h5>行程管理（管理員限定）</h5>
+    <div class="help-row"><span class="help-cmd">/新增團 TMB-G6 10/1 13天</span><span class="help-desc">自動計算日期填入行程</span></div>
+    <div class="help-row"><span class="help-cmd">/新增團 TMB-G6 10/1~10/13 Chris Ally</span><span class="help-desc">指定日期範圍和領隊</span></div>
   </div>
   <div class="help-section">
     <h5>查詢</h5>
     <div class="help-row"><span class="help-cmd">/查詢 Chris 9月</span><span class="help-desc">查詢某人某月行程</span></div>
     <div class="help-row"><span class="help-cmd">/空檔 9/5</span><span class="help-desc">查詢某天有空的領隊</span></div>
+    <div class="help-row"><span class="help-cmd">/空檔 9/5~9/10</span><span class="help-desc">查詢日期範圍內全程有空的領隊</span></div>
     <div class="help-row"><span class="help-cmd">/行程 TMB-G1</span><span class="help-desc">查詢某行程所有領隊</span></div>
     <div class="help-row"><span class="help-cmd">/統計 9月</span><span class="help-desc">查詢某月出團統計</span></div>
     <div class="help-row"><span class="help-cmd">/缺會議</span><span class="help-desc">列出缺行前/交團/檢討的行程</span></div>
   </div>
+  <div style="font-size:11px;color:var(--text3);padding-top:8px;border-top:1px solid #f0f2f5;">💡 名字大小寫不敏感、空格自動忽略</div>
 </div>
 
 <!-- Firebase + App Logic -->
@@ -620,6 +651,11 @@ function openPop(m,d,g){
   document.getElementById('popTitle').textContent=`${g}  ${m}/${d}`;
   document.getElementById('popInput').value='';
   document.getElementById('popHint').textContent='';
+  document.getElementById('popTime').value='';
+  document.getElementById('popTarget').value='';
+  document.querySelector('input[name="meetMode"][value="現場"]').checked=true;
+  document.getElementById('meetingFields').style.display='none';
+  document.getElementById('normalFields').style.display='block';
   const tg=document.getElementById('typeGrid');tg.innerHTML='';
   Object.entries(TYPES).forEach(([t,info])=>{
     const btn=document.createElement('button');
@@ -628,21 +664,43 @@ function openPop(m,d,g){
       popState.type=t;
       tg.querySelectorAll('.tbtn').forEach(b=>b.className='tbtn');
       btn.className=`tbtn ${info.sel}`;
-      document.getElementById('popHint').textContent=info.needTime?'格式：14:00 團名':'';
-      document.getElementById('popInput').placeholder=info.needTime?'14:00 團名':'說明（可空白）';
+      const isMeeting=['pre','hand','review'].includes(t);
+      document.getElementById('meetingFields').style.display=isMeeting?'block':'none';
+      document.getElementById('normalFields').style.display=isMeeting?'none':'block';
+      if(!isMeeting){
+        document.getElementById('popHint').textContent='';
+        document.getElementById('popInput').placeholder='說明（可空白）';
+      }
     };
     tg.appendChild(btn);
   });
   document.getElementById('ov').style.display='flex';
-  setTimeout(()=>document.getElementById('popInput').focus(),50);
+  setTimeout(()=>{
+    const isMeeting=['pre','hand','review'].includes(popState.type);
+    if(isMeeting) document.getElementById('popTime').focus();
+    else document.getElementById('popInput').focus();
+  },50);
 }
 document.getElementById('pCancel').onclick=()=>document.getElementById('ov').style.display='none';
 document.getElementById('ov').onclick=e=>{if(e.target===document.getElementById('ov'))document.getElementById('ov').style.display='none';};
 document.getElementById('pConfirm').onclick=async()=>{
-  const text=document.getElementById('popInput').value.trim();
-  const{m,d,g,type}=popState;
+  const {m,d,g,type}=popState;
   const k=`${m}|${d}|${g}`;
   const arr=(scheduleData[k]||[]).slice();
+  let text='';
+  const isMeeting=['pre','hand','review'].includes(type);
+  if(isMeeting){
+    const time=document.getElementById('popTime').value.trim();
+    const target=document.getElementById('popTarget').value.trim();
+    const mode=document.querySelector('input[name="meetMode"]:checked').value;
+    const parts=[];
+    if(time && mode!=='回看') parts.push(time);
+    if(target) parts.push(target);
+    if(mode!=='現場') parts.push(`[${mode}]`);
+    text=parts.join(' ')||TYPES[type].label;
+  } else {
+    text=document.getElementById('popInput').value.trim();
+  }
   if(SINGLE.includes(type)){const idx=arr.findIndex(e=>SINGLE.includes(e.type));if(idx>=0)arr.splice(idx,1);}
   arr.push({type,text:text||TYPES[type].label});
   scheduleData[k]=arr;
@@ -765,11 +823,6 @@ window.exportExcel=function(){
   toast('已匯出 CSV（可用 Excel 開啟）');
 };
 
-// ── Admin ──
-// ── Command Bar ──
-const TYPES_MAP = {'行程':'trip','提早去':'early','延回':'late','請假':'leave','行前':'pre','交團':'hand','檢討':'review'};
-const SINGLE_TYPES = ['trip','early','late','leave'];
-
 function cmdLog(msg, cls=''){
   const el=document.getElementById('cmdLog');
   const div=document.createElement('div');
@@ -777,8 +830,15 @@ function cmdLog(msg, cls=''){
   div.textContent=msg;
   el.appendChild(div);
   el.scrollTop=el.scrollHeight;
-  // keep max 20 lines
   while(el.children.length>20) el.removeChild(el.firstChild);
+}
+
+// ── Name matching helpers ──
+function normName(s){ return s.replace(/\s+/g,'').toLowerCase(); }
+function findGuide(raw){
+  if(!raw) return null;
+  const n=normName(raw);
+  return guides.find(g=>normName(g)===n) || guides.find(g=>normName(g).includes(n)||n.includes(normName(g)));
 }
 
 function showCmdBar(){
@@ -790,18 +850,12 @@ document.getElementById('cmdHelpBtn').onclick=()=>{
   const h=document.getElementById('cmdHelp');
   h.style.display=h.style.display==='none'?'block':'none';
 };
-
 document.getElementById('cmdExecBtn').onclick=()=>{
   const inp=document.getElementById('cmdInput2');
-  execCmd(inp.value.trim());
-  inp.value='';
+  execCmd(inp.value.trim()); inp.value='';
 };
 document.getElementById('cmdInput2').addEventListener('keydown',e=>{
-  if(e.key==='Enter'){
-    const inp=document.getElementById('cmdInput2');
-    execCmd(inp.value.trim());
-    inp.value='';
-  }
+  if(e.key==='Enter'){const inp=document.getElementById('cmdInput2');execCmd(inp.value.trim());inp.value='';}
   if(e.key==='Escape') document.getElementById('cmdHelp').style.display='none';
 });
 
@@ -1027,12 +1081,14 @@ async function execCmd(raw){
     const rows=document.querySelectorAll('#tbody tr');
     if(rows[d-1]) rows[d-1].scrollIntoView({block:'center',behavior:'smooth'});
   },100);
-}
+} // end execCmd
 
 // show command bar after login
 const _origShowApp = show;
 function initCmdBar(){ showCmdBar(); }
 
+// ── Admin ──
+async function loadAdminUsers(){
   const snap=await getDocs(collection(db,'users'));
   const ul=document.getElementById('userList');ul.innerHTML='';
   snap.forEach(d=>{
@@ -1054,6 +1110,7 @@ function initCmdBar(){ showCmdBar(); }
     };
     ul.appendChild(row);
   });
+}
 </script>
 </body>
 </html>
