@@ -399,6 +399,54 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
   <h4>指令說明 <button onclick="document.getElementById('cmdHelp').style.display='none'">×</button></h4>
   <div class="help-section">
     <h5>班表操作</h5>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 "TMB-G1"</span><span class="help-desc">填入行程</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 行前 10:00 "TMB-G1"</span><span class="help-desc">填入行前（現場，預設）</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 行前 10:00 "TMB-G1" 線上</span><span class="help-desc">填入行前（線上）</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 檢討 "TMB-G1" 回看</span><span class="help-desc">填入檢討（回看，不需時間）</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 延回 / 提早去 / 請假</span><span class="help-desc">標記狀態</span></div>
+    <div class="help-row"><span class="help-cmd">/修改 Chris 9/5 行前 "14:00 TMB-G1"</span><span class="help-desc">修改已有的會議時間</span></div>
+    <div class="help-row"><span class="help-cmd">/清除 Chris 9/5 行程</span><span class="help-desc">清除特定類型</span></div>
+    <div class="help-row"><span class="help-cmd">/批次 Chris 9/5~9/13 "TMB-G1"</span><span class="help-desc">批次填入日期範圍</span></div>
+  </div>
+  <div class="help-section">
+    <h5>團整體安排（自動套用所有領隊）</h5>
+    <div class="help-row"><span class="help-cmd">塔曼山 行前 7/17 10:00</span><span class="help-desc">為「塔曼山」全體領隊填入行前</span></div>
+    <div class="help-row"><span class="help-cmd">塔曼山 交團 7/20 14:00 線上</span><span class="help-desc">為全體領隊填入交團（線上）</span></div>
+    <div class="help-row"><span class="help-cmd">塔曼山 檢討 7/25 回看</span><span class="help-desc">為全體領隊填入檢討（回看）</span></div>
+  </div>
+  <div class="help-section">
+    <h5>行程管理（管理員限定）</h5>
+    <div class="help-row"><span class="help-cmd">/新增團 "塔曼山" 7/19 2天</span><span class="help-desc">新增行程（未指定領隊）</span></div>
+    <div class="help-row"><span class="help-cmd">/新增團 "塔曼山" 7/19 2天 效文 Bear</span><span class="help-desc">新增行程並指定領隊</span></div>
+    <div class="help-row"><span class="help-cmd">/加入 效文 "塔曼山"</span><span class="help-desc">在現有行程新增一個領隊</span></div>
+    <div class="help-row"><span class="help-cmd">/換領隊 效文 Bear "塔曼山"</span><span class="help-desc">換領隊，同步搬移行前/交團/檢討</span></div>
+  </div>
+  <div class="help-section">
+    <h5>領隊管理（管理員限定）</h5>
+    <div class="help-row"><span class="help-cmd">/新增領隊 Amy</span><span class="help-desc">新增領隊</span></div>
+    <div class="help-row"><span class="help-cmd">/刪除領隊 Amy</span><span class="help-desc">刪除領隊及所有資料</span></div>
+    <div class="help-row"><span class="help-cmd">/改名 建源 阿源</span><span class="help-desc">領隊改名（同步所有資料）</span></div>
+    <div class="help-row"><span class="help-cmd">/名單</span><span class="help-desc">顯示所有領隊</span></div>
+  </div>
+  <div class="help-section">
+    <h5>查詢與檢查</h5>
+    <div class="help-row"><span class="help-cmd">/空檔 9/5</span><span class="help-desc">查詢某天有空的領隊</span></div>
+    <div class="help-row"><span class="help-cmd">/空檔 9/5~9/10</span><span class="help-desc">查詢日期範圍全程有空的領隊</span></div>
+    <div class="help-row"><span class="help-cmd">/查詢 Chris 9月</span><span class="help-desc">查詢某人某月行程</span></div>
+    <div class="help-row"><span class="help-cmd">/行程 "TMB-G1"</span><span class="help-desc">查詢某行程所有領隊</span></div>
+    <div class="help-row"><span class="help-cmd">/統計 9月</span><span class="help-desc">查詢某月出團統計</span></div>
+    <div class="help-row"><span class="help-cmd">/檢查</span><span class="help-desc">檢查所有行程是否缺行前/交團/檢討</span></div>
+    <div class="help-row"><span class="help-cmd">/檢查 9月</span><span class="help-desc">檢查特定月份</span></div>
+    <div class="help-row"><span class="help-cmd">/檢查 "塔曼山"</span><span class="help-desc">檢查特定行程</span></div>
+    <div class="help-row"><span class="help-cmd">/檢查 Chris</span><span class="help-desc">檢查特定領隊</span></div>
+  </div>
+  <div style="font-size:11px;color:var(--text3);padding-top:8px;border-top:1px solid #f0f2f5;">
+    💡 名字大小寫不敏感、空格自動忽略｜團名請用引號包住
+  </div>
+</div>
+  <h4>指令說明 <button onclick="document.getElementById('cmdHelp').style.display='none'">×</button></h4>
+  <div class="help-section">
+    <h5>班表操作</h5>
     <div class="help-row"><span class="help-cmd">Chris 9/5 TMB-G1</span><span class="help-desc">填入行程</span></div>
     <div class="help-row"><span class="help-cmd">Chris 9/5 行前 10:00 TMB-G1</span><span class="help-desc">填入行前（現場）</span></div>
     <div class="help-row"><span class="help-cmd">Chris 9/5 行前 10:00 TMB-G1 線上</span><span class="help-desc">填入行前（線上）</span></div>
@@ -864,63 +912,91 @@ async function execCmd(raw){
   const cmd = raw.trim();
   cmdLog('▶ '+cmd);
 
-  // helper: extract quoted trip name
-  function getQuoted(s){ const m=s.match(/["「」""]([^"「」""]+)["「」""]/); return m?m[1]:null; }
-  // helper: strip quoted name from string
-  function stripQuoted(s){ return s.replace(/["「」""][^"「」""]+["「」""]/,'').trim(); }
+  function getQuoted(s){ const m=s.match(/["「」\u201c\u201d]([^"「」\u201c\u201d]+)["「」\u201c\u201d]/); return m?m[1]:null; }
+  function stripQuoted(s){ return s.replace(/["「」\u201c\u201d][^"「」\u201c\u201d]+["「」\u201c\u201d]/g,'').trim(); }
+  function findAllGuides(s){ return s.split(/\s+/).map(w=>findGuide(w)).filter(Boolean).filter((g,i,a)=>a.indexOf(g)===i); }
+  function getTripGuides(tripName){
+    const gs=new Set();
+    Object.entries(scheduleData).forEach(([k,entries])=>{
+      if(entries.some(e=>e.type==='trip'&&e.text===tripName)){const[,,g]=k.split('|');gs.add(g);}
+    });
+    return [...gs];
+  }
+  function getTripDates(tripName){
+    const days=[];
+    Object.entries(scheduleData).forEach(([k,entries])=>{
+      if(entries.some(e=>e.type==='trip'&&e.text===tripName)){
+        const[m,d]=k.split('|');days.push(new Date(2026,parseInt(m)-1,parseInt(d)));
+      }
+    });
+    if(!days.length) return null;
+    days.sort((a,b)=>a-b);
+    return {first:days[0],last:days[days.length-1]};
+  }
 
-  // ── /新增領隊 Amy ──
+  // /新增領隊
   if(/^\/新增領隊\s+(.+)/.test(cmd)){
     if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
     const name=cmd.match(/^\/新增領隊\s+(.+)/)[1].trim();
     if(guides.some(g=>normName(g)===normName(name))){cmdLog(`⚠️ 「${name}」已存在`,'cmd-err');return;}
-    guides.push(name); await saveGuides();
-    cmdLog(`✅ 已新增領隊「${name}」`,'cmd-ok'); return;
+    guides.push(name);await saveGuides();cmdLog(`✅ 已新增領隊「${name}」`,'cmd-ok');return;
   }
 
-  // ── /刪除領隊 Amy ──
+  // /刪除領隊
   if(/^\/刪除領隊\s+(.+)/.test(cmd)){
     if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
-    const name=cmd.match(/^\/刪除領隊\s+(.+)/)[1].trim();
-    const found=findGuide(name);
-    if(!found){cmdLog(`⚠️ 找不到「${name}」`,'cmd-err');return;}
+    const found=findGuide(cmd.match(/^\/刪除領隊\s+(.+)/)[1].trim());
+    if(!found){cmdLog('⚠️ 找不到領隊','cmd-err');return;}
     guides=guides.filter(g=>g!==found);
     Object.keys(scheduleData).forEach(k=>{if(k.endsWith('|'+found))delete scheduleData[k];});
-    await saveGuides(); await saveSchedule();
-    cmdLog(`✅ 已刪除領隊「${found}」及所有紀錄`,'cmd-ok'); return;
+    await saveGuides();await saveSchedule();cmdLog(`✅ 已刪除「${found}」`,'cmd-ok');return;
   }
 
-  // ── /改名 舊名 新名 ──
+  // /改名
   if(/^\/改名\s+(\S+)\s+(\S+)/.test(cmd)){
     if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
     const parts=cmd.match(/^\/改名\s+(\S+)\s+(\S+)/);
-    const oldN=findGuide(parts[1]), newN=parts[2].trim();
+    const oldN=findGuide(parts[1]),newN=parts[2].trim();
     if(!oldN){cmdLog(`⚠️ 找不到「${parts[1]}」`,'cmd-err');return;}
     if(guides.some(g=>normName(g)===normName(newN))){cmdLog(`⚠️ 「${newN}」已存在`,'cmd-err');return;}
     guides=guides.map(g=>g===oldN?newN:g);
-    const newData={};
-    Object.entries(scheduleData).forEach(([k,v])=>{
-      const p=k.split('|'); if(p[2]===oldN)p[2]=newN; newData[p.join('|')]=v;
-    });
-    scheduleData=newData;
-    await saveGuides(); await saveSchedule();
-    cmdLog(`✅ 已將「${oldN}」改名為「${newN}」`,'cmd-ok'); return;
+    const nd={};Object.entries(scheduleData).forEach(([k,v])=>{const p=k.split('|');if(p[2]===oldN)p[2]=newN;nd[p.join('|')]=v;});
+    scheduleData=nd;await saveGuides();await saveSchedule();cmdLog(`✅ 「${oldN}」→「${newN}」`,'cmd-ok');return;
   }
 
-  // ── /換領隊 舊 新 "行程名" ──
+  // /加入 效文 "塔曼山"
+  if(/^\/加入/.test(cmd)){
+    if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
+    const tripName=getQuoted(cmd);
+    if(!tripName){cmdLog('⚠️ 請用引號包住團名，如 /加入 效文 "塔曼山"','cmd-err');return;}
+    const newGs=findAllGuides(stripQuoted(cmd).replace('/加入','').trim());
+    if(!newGs.length){cmdLog('⚠️ 找不到領隊','cmd-err');return;}
+    const dates=getTripDates(tripName);
+    if(!dates){cmdLog(`⚠️ 找不到行程「${tripName}」`,'cmd-err');return;}
+    let filled=0,cur=new Date(dates.first);
+    while(cur<=dates.last){
+      const m=cur.getMonth()+1,d=cur.getDate();
+      const hasDay=Object.keys(scheduleData).some(k=>k.startsWith(`${m}|${d}|`)&&scheduleData[k].some(e=>e.type==='trip'&&e.text===tripName));
+      if(hasDay){for(const g of newGs){const k=`${m}|${d}|${g}`;if(!scheduleData[k])scheduleData[k]=[];if(!scheduleData[k].some(e=>e.type==='trip'&&e.text===tripName)){scheduleData[k].push({type:'trip',text:tripName});filled++;}}}
+      cur.setDate(cur.getDate()+1);
+    }
+    if(curMonth!==dates.first.getMonth()+1)curMonth=dates.first.getMonth()+1;
+    await saveSchedule();cmdLog(`✅ 已將 ${newGs.join('、')} 加入「${tripName}」，共${filled}筆`,'cmd-ok');return;
+  }
+
+  // /換領隊 舊 新 "行程名"
   if(/^\/換領隊/.test(cmd)){
     if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
     const tripName=getQuoted(cmd);
     const rest=stripQuoted(cmd).replace('/換領隊','').trim().split(/\s+/);
-    const oldG=findGuide(rest[0]), newG=findGuide(rest[1]);
+    const oldG=findGuide(rest[0]),newG=findGuide(rest[1]);
     if(!oldG){cmdLog(`⚠️ 找不到舊領隊「${rest[0]}」`,'cmd-err');return;}
     if(!newG){cmdLog(`⚠️ 找不到新領隊「${rest[1]}」`,'cmd-err');return;}
-    let changed=0, meetings=0;
+    let changed=0,meetings=0;
     const tripDays=[];
     Object.entries(scheduleData).forEach(([k,entries])=>{
-      const [km,kd,kg]=k.split('|');
-      if(kg!==oldG) return;
-      if(entries.some(e=>e.type==='trip'&&(!tripName||e.text===tripName)))
+      const[km,kd,kg]=k.split('|');
+      if(kg===oldG&&entries.some(e=>e.type==='trip'&&(!tripName||e.text===tripName)))
         tripDays.push({m:parseInt(km),d:parseInt(kd),entries:[...entries]});
     });
     const MEET=['pre','hand','review'];
@@ -928,28 +1004,27 @@ async function execCmd(raw){
       const sorted=tripDays.sort((a,b)=>a.m*31+a.d-(b.m*31+b.d));
       const firstDt=new Date(2026,sorted[0].m-1,sorted[0].d);
       const lastDt=new Date(2026,sorted[sorted.length-1].m-1,sorted[sorted.length-1].d);
-      const ws=new Date(firstDt); ws.setDate(ws.getDate()-14);
-      const we=new Date(lastDt); we.setDate(we.getDate()+14);
-      for(const {m,d,entries} of tripDays){
-        const ok=`${m}|${d}|${oldG}`, nk=`${m}|${d}|${newG}`;
+      const ws=new Date(firstDt);ws.setDate(ws.getDate()-60);
+      const we=new Date(lastDt);we.setDate(we.getDate()+30);
+      for(const{m,d,entries}of tripDays){
+        const ok=`${m}|${d}|${oldG}`,nk=`${m}|${d}|${newG}`;
         const te=entries.filter(e=>e.type==='trip'&&(!tripName||e.text===tripName));
         scheduleData[ok]=(scheduleData[ok]||[]).filter(e=>!te.some(x=>x===e));
-        if(!scheduleData[ok].length) delete scheduleData[ok];
-        if(!scheduleData[nk]) scheduleData[nk]=[];
+        if(!scheduleData[ok].length)delete scheduleData[ok];
+        if(!scheduleData[nk])scheduleData[nk]=[];
         te.forEach(e=>{if(!scheduleData[nk].some(x=>x.type===e.type&&x.text===e.text))scheduleData[nk].push(e);});
         changed++;
       }
       let cur=new Date(ws);
       while(cur<=we){
-        const m=cur.getMonth()+1,d=cur.getDate();
-        const ok=`${m}|${d}|${oldG}`;
+        const m=cur.getMonth()+1,d=cur.getDate(),ok=`${m}|${d}|${oldG}`;
         if(scheduleData[ok]){
           const me=scheduleData[ok].filter(e=>MEET.includes(e.type));
           if(me.length){
             const nk=`${m}|${d}|${newG}`;
             scheduleData[ok]=scheduleData[ok].filter(e=>!MEET.includes(e.type));
-            if(!scheduleData[ok].length) delete scheduleData[ok];
-            if(!scheduleData[nk]) scheduleData[nk]=[];
+            if(!scheduleData[ok].length)delete scheduleData[ok];
+            if(!scheduleData[nk])scheduleData[nk]=[];
             me.forEach(e=>{if(!scheduleData[nk].some(x=>x.type===e.type&&x.text===e.text))scheduleData[nk].push(e);});
             meetings++;
           }
@@ -958,303 +1033,254 @@ async function execCmd(raw){
       }
     }
     await saveSchedule();
-    cmdLog(`✅ ${tripName?`「${tripName}」`:'所有行程'} ${oldG}→${newG}（行程${changed}天，會議${meetings}筆）`,'cmd-ok'); return;
+    cmdLog(`✅ ${tripName?`「${tripName}」`:'所有行程'} ${oldG}→${newG}（行程${changed}天，會議${meetings}筆）`,'cmd-ok');return;
   }
 
-  // ── /名單 ──
-  if(/^\/名單/.test(cmd)){
-    cmdLog(`📋 領隊名單（${guides.length}人）：${guides.join('、')}`,'cmd-info'); return;
-  }
+  // /名單
+  if(/^\/名單/.test(cmd)){cmdLog(`📋 領隊名單（${guides.length}人）：${guides.join('、')}`,'cmd-info');return;}
 
-  // ── /新增團 "塔曼山" 7/19 2天 效文 Bear ──
+  // /新增團 "塔曼山" 7/19 2天 效文 Bear
   if(/^\/新增團/.test(cmd)){
     if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
     const tripName=getQuoted(cmd);
     if(!tripName){cmdLog('⚠️ 請用引號包住團名，如 /新增團 "塔曼山" 7/19 2天','cmd-err');return;}
     const rest=stripQuoted(cmd).replace('/新增團','').trim();
-    const rangeM=rest.match(/(\d{1,2})[\/月](\d{1,2})[~～](\d{1,2})[\/月](\d{1,2})/);
-    const singleM=rest.match(/(\d{1,2})[\/月](\d{1,2})/);
-    const dayM=rest.match(/(\d+)天/);
-    let startM,startD,endM,endD;
-    if(rangeM){
-      startM=parseInt(rangeM[1]);startD=parseInt(rangeM[2]);endM=parseInt(rangeM[3]);endD=parseInt(rangeM[4]);
-    } else if(singleM&&dayM){
-      startM=parseInt(singleM[1]);startD=parseInt(singleM[2]);
-      const ed=new Date(2026,startM-1,startD+parseInt(dayM[1])-1);
-      endM=ed.getMonth()+1;endD=ed.getDate();
-    } else {
-      cmdLog('⚠️ 請包含日期，如 7/19 2天 或 7/19~7/20','cmd-err');return;
-    }
-    // parse guides from rest (after date/days)
-    const restForGuides=rest.replace(rangeM?rangeM[0]:singleM[0],'').replace(dayM?dayM[0]:'','').trim();
-    const guideNames=restForGuides.split(/\s+/).filter(Boolean).map(p=>findGuide(p)).filter(Boolean);
-    // deduplicate
-    const uniqueGuides=[...new Set(guideNames)];
-    let filled=0;
-    let cur=new Date(2026,startM-1,startD);
-    const endDt=new Date(2026,endM-1,endD);
-    while(cur<=endDt){
+    const rM=rest.match(/(\d{1,2})[\/月](\d{1,2})[~～](\d{1,2})[\/月](\d{1,2})/);
+    const sM=rest.match(/(\d{1,2})[\/月](\d{1,2})/);
+    const dM=rest.match(/(\d+)天/);
+    let smo,sda,emo,eda;
+    if(rM){smo=parseInt(rM[1]);sda=parseInt(rM[2]);emo=parseInt(rM[3]);eda=parseInt(rM[4]);}
+    else if(sM&&dM){smo=parseInt(sM[1]);sda=parseInt(sM[2]);const ed=new Date(2026,smo-1,sda+parseInt(dM[1])-1);emo=ed.getMonth()+1;eda=ed.getDate();}
+    else{cmdLog('⚠️ 請包含日期，如 7/19 2天 或 7/19~7/20','cmd-err');return;}
+    const rfg=rest.replace(rM?rM[0]:sM[0],'').replace(dM?dM[0]:'','').trim();
+    const ugs=findAllGuides(rfg);
+    let filled=0,cur=new Date(2026,smo-1,sda);
+    const edt=new Date(2026,emo-1,eda);
+    while(cur<=edt){
       const m=cur.getMonth()+1,d=cur.getDate();
-      for(const g of (uniqueGuides.length?uniqueGuides:['_placeholder'])){
-        if(g==='_placeholder') continue;
-        const k=`${m}|${d}|${g}`;
-        if(!scheduleData[k]) scheduleData[k]=[];
-        if(!scheduleData[k].some(e=>e.type==='trip'&&e.text===tripName)){
-          scheduleData[k].push({type:'trip',text:tripName}); filled++;
-        }
-      }
+      for(const g of ugs){const k=`${m}|${d}|${g}`;if(!scheduleData[k])scheduleData[k]=[];if(!scheduleData[k].some(e=>e.type==='trip'&&e.text===tripName)){scheduleData[k].push({type:'trip',text:tripName});filled++;}}
       cur.setDate(cur.getDate()+1);
     }
-    if(curMonth!==startM) curMonth=startM;
-    await saveSchedule();
-    const gStr=uniqueGuides.length?` 領隊：${uniqueGuides.join('、')}`:'（未指定領隊，可之後再填）';
-    cmdLog(`✅ 已新增「${tripName}」${startM}/${startD}~${endM}/${endD}${gStr}，共${filled}筆`,'cmd-ok'); return;
+    if(curMonth!==smo)curMonth=smo;await saveSchedule();
+    cmdLog(`✅ 已新增「${tripName}」${smo}/${sda}~${emo}/${eda}${ugs.length?` 領隊：${ugs.join('、')}`:'（未指定領隊）'}，共${filled}筆`,'cmd-ok');return;
   }
 
-  // ── /修改 Chris 9/5 行前 "新時間/說明" ──
+  // /修改 Chris 9/5 行前 "新內容"
   if(/^\/修改/.test(cmd)){
     const dm=cmd.match(/(\d{1,2})[\/月](\d{1,2})/);
     if(!dm){cmdLog('⚠️ 請包含日期','cmd-err');return;}
     const m=parseInt(dm[1]),d=parseInt(dm[2]);
-    const gFound=findGuide(cmd.replace('/修改','').replace(dm[0],'').split(/\s+/).find(p=>findGuide(p))||'');
+    const gFound=cmd.replace('/修改','').replace(dm[0],'').trim().split(/\s+/).map(w=>findGuide(w)).find(Boolean);
     if(!gFound){cmdLog('⚠️ 找不到領隊','cmd-err');return;}
     if(!canEdit(gFound)){cmdLog('⚠️ 無權限','cmd-err');return;}
     const typeKey=Object.keys(TYPES_MAP).find(t=>cmd.includes(t));
-    if(!typeKey){cmdLog('⚠️ 請指定類型：行程、行前、交團、檢討等','cmd-err');return;}
+    if(!typeKey){cmdLog('⚠️ 請指定類型','cmd-err');return;}
     const type=TYPES_MAP[typeKey];
-    const newText=getQuoted(cmd)||(cmd.replace('/修改','').replace(gFound,'').replace(dm[0],'').replace(typeKey,'').replace(/[，,。\s]+/g,' ').trim());
+    const newText=getQuoted(cmd)||(cmd.replace('/修改','').replace(gFound,'').replace(dm[0],'').replace(typeKey,'').trim());
     const k=`${m}|${d}|${gFound}`;
     const arr=(scheduleData[k]||[]).slice();
     const idx=arr.findIndex(e=>e.type===type);
-    if(idx>=0){
-      arr[idx]={type,text:newText};
-      scheduleData[k]=arr;
-      await saveSchedule();
-      cmdLog(`✅ 已修改 ${gFound} ${m}/${d} [${typeKey}] → ${newText}`,'cmd-ok');
-    } else {
-      // not found, add new
-      if(!scheduleData[k]) scheduleData[k]=[];
-      scheduleData[k].push({type,text:newText});
-      await saveSchedule();
-      cmdLog(`✅ 已新增 ${gFound} ${m}/${d} [${typeKey}] ${newText}`,'cmd-ok');
+    if(idx>=0)arr[idx]={type,text:newText};
+    else{if(!scheduleData[k])scheduleData[k]=[];scheduleData[k].push({type,text:newText});}
+    if(idx>=0)scheduleData[k]=arr;
+    if(curMonth!==m)curMonth=m;await saveSchedule();
+    cmdLog(`✅ 已修改 ${gFound} ${m}/${d} [${typeKey}] → ${newText}`,'cmd-ok');return;
+  }
+
+  // 團名 行前/交團/檢討 日期 時間 (e.g. 塔曼山 行前 7/17 10:00)
+  const MEET_KW=['行前','交團','檢討'];
+  const meetKw=MEET_KW.find(k=>cmd.includes(k));
+  if(meetKw&&!cmd.startsWith('/')){
+    const dm2=cmd.match(/(\d{1,2})[\/月](\d{1,2})/);
+    const timeM=cmd.match(/(\d{1,2}:\d{2})/);
+    const modeM=cmd.match(/(線上|回看)/);
+    const mode=modeM?modeM[1]:'現場';
+    const beforeKw=cmd.split(meetKw)[0].trim().replace(/["「」""]/g,'');
+    const isGuide=findGuide(beforeKw);
+    const tripGs=!isGuide?getTripGuides(beforeKw):null;
+    if(!isGuide&&tripGs&&tripGs.length>0&&dm2){
+      const m=parseInt(dm2[1]),d=parseInt(dm2[2]);
+      const type=TYPES_MAP[meetKw];
+      const parts=[];
+      if(timeM&&mode!=='回看')parts.push(timeM[1]);
+      if(mode!=='現場')parts.push(`[${mode}]`);
+      const text=parts.join(' ')||meetKw;
+      for(const g of tripGs){const k=`${m}|${d}|${g}`;if(!scheduleData[k])scheduleData[k]=[];scheduleData[k].push({type,text});}
+      if(curMonth!==m)curMonth=m;await saveSchedule();
+      cmdLog(`✅ 「${beforeKw}」${meetKw} ${m}/${d} ${text||'（現場）'} → ${tripGs.join('、')}`,'cmd-ok');return;
     }
-    if(curMonth!==m) curMonth=m;
+  }
+
+  // /檢查 [月份/團名/領隊]
+  if(/^\/檢查/.test(cmd)){
+    if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
+    const arg=cmd.replace('/檢查','').trim();
+    const tripName=getQuoted(cmd)||(arg&&!arg.match(/^\d/)&&!findGuide(arg)&&arg.length>0?arg:null);
+    const monthM=arg.match(/(\d{1,2})月?$/);
+    const guideArg=arg?findGuide(arg):null;
+    const tripInstances={};
+    Object.entries(scheduleData).forEach(([k,entries])=>{
+      const[m,d,g]=k.split('|');
+      entries.forEach(e=>{
+        if(e.type!=='trip')return;
+        if(tripName&&e.text!==tripName)return;
+        if(guideArg&&g!==guideArg)return;
+        if(monthM&&parseInt(m)!==parseInt(monthM[1]))return;
+        const tk=`${e.text}||${g}`;
+        if(!tripInstances[tk])tripInstances[tk]={name:e.text,g,days:[]};
+        tripInstances[tk].days.push(new Date(2026,parseInt(m)-1,parseInt(d)));
+      });
+    });
+    const results=[];
+    Object.values(tripInstances).forEach(({name,g,days})=>{
+      days.sort((a,b)=>a-b);
+      const first=days[0],last=days[days.length-1];
+      const preStart=new Date(first);preStart.setDate(preStart.getDate()-60);
+      const handStart=new Date(first);handStart.setDate(handStart.getDate()-30);
+      const revEnd=new Date(last);revEnd.setDate(revEnd.getDate()+30);
+      const check=(typeStr,from,to)=>Object.entries(scheduleData).some(([k,es])=>{
+        const[m,d,kg]=k.split('|');if(kg!==g)return false;
+        const dt=new Date(2026,parseInt(m)-1,parseInt(d));
+        return dt>=from&&dt<=to&&es.some(e=>e.type===typeStr);
+      });
+      const missing=[];
+      if(!check('pre',preStart,first))missing.push('行前（出發前60天）');
+      if(!check('hand',handStart,first))missing.push('交團（出發前30天）');
+      if(!check('review',last,revEnd))missing.push('檢討（結束後30天）');
+      if(missing.length)results.push(`${name}（${g}）${first.getMonth()+1}/${first.getDate()}出發 缺：${missing.join('、')}`);
+    });
+    if(!results.length)cmdLog(`✅ ${arg||'所有行程'} 行前/交團/檢討均已安排`,'cmd-ok');
+    else{cmdLog(`⚠️ 發現 ${results.length} 個缺少安排：`,'cmd-err');results.forEach(r=>cmdLog('  '+r,'cmd-err'));}
     return;
   }
 
-  // ── /空檔 9/5 或 /空檔 9/5~9/10 ──
+  // /空檔
   if(/^\/空檔/.test(cmd)){
-    const rangeM=cmd.match(/(\d{1,2})[\/月](\d{1,2})[~～](\d{1,2})[\/月](\d{1,2})/);
-    const singleM=cmd.match(/(\d{1,2})[\/月](\d{1,2})/);
-    if(rangeM){
-      const sm=parseInt(rangeM[1]),sd=parseInt(rangeM[2]),em=parseInt(rangeM[3]),ed=parseInt(rangeM[4]);
+    const rM=cmd.match(/(\d{1,2})[\/月](\d{1,2})[~～](\d{1,2})[\/月](\d{1,2})/);
+    const sM=cmd.match(/(\d{1,2})[\/月](\d{1,2})/);
+    if(rM){
+      const sm=parseInt(rM[1]),sd=parseInt(rM[2]),em=parseInt(rM[3]),ed=parseInt(rM[4]);
       const busyG=new Set();
-      let cur=new Date(2026,sm-1,sd);
-      const endDt=new Date(2026,em-1,ed);
-      while(cur<=endDt){
-        const m=cur.getMonth()+1,d=cur.getDate();
-        guides.forEach(g=>{if((scheduleData[`${m}|${d}|${g}`]||[]).length>0)busyG.add(g);});
-        cur.setDate(cur.getDate()+1);
-      }
+      let cur=new Date(2026,sm-1,sd);const edt=new Date(2026,em-1,ed);
+      while(cur<=edt){const m=cur.getMonth()+1,d=cur.getDate();guides.forEach(g=>{if((scheduleData[`${m}|${d}|${g}`]||[]).length>0)busyG.add(g);});cur.setDate(cur.getDate()+1);}
       const free=guides.filter(g=>!busyG.has(g));
       cmdLog(`📅 ${sm}/${sd}~${em}/${ed} 全程有空(${free.length})：${free.join('、')||'無'}`,'cmd-info');
-      cmdLog(`📅 有行程或狀態(${busyG.size})：${[...busyG].join('、')||'無'}`,'cmd-info');
-    } else if(singleM){
-      const mi=parseInt(singleM[1]),di=parseInt(singleM[2]);
+      cmdLog(`📅 有行程(${busyG.size})：${[...busyG].join('、')||'無'}`,'cmd-info');
+    }else if(sM){
+      const mi=parseInt(sM[1]),di=parseInt(sM[2]);
       const busy=guides.filter(g=>(scheduleData[`${mi}|${di}|${g}`]||[]).length>0);
-      const free=guides.filter(g=>!busy.includes(g));
-      cmdLog(`📅 ${mi}/${di} 有空(${free.length})：${free.join('、')||'無'}`,'cmd-info');
+      cmdLog(`📅 ${mi}/${di} 有空(${guides.length-busy.length})：${guides.filter(g=>!busy.includes(g)).join('、')||'無'}`,'cmd-info');
       cmdLog(`📅 有行程(${busy.length})：${busy.join('、')||'無'}`,'cmd-info');
-    } else {
-      cmdLog('⚠️ 請包含日期，如 /空檔 9/5 或 /空檔 9/5~9/10','cmd-err');
-    }
+    }else cmdLog('⚠️ 請包含日期','cmd-err');
     return;
   }
 
-  // ── /查詢 Chris 9月 ──
+  // /查詢 Chris 9月
   if(/^\/查詢/.test(cmd)){
-    const ms=cmd.match(/(\d{1,2})月?/);
-    if(!ms){cmdLog('⚠️ 請包含月份，如 /查詢 Chris 9月','cmd-err');return;}
+    const ms=cmd.match(/(\d{1,2})月?/);if(!ms){cmdLog('⚠️ 請包含月份','cmd-err');return;}
     const m=parseInt(ms[1]);
     const rawG=cmd.replace('/查詢','').replace(/\d+月?/,'').trim();
     const gFound=rawG?findGuide(rawG):null;
-    if(rawG&&!gFound){cmdLog(`⚠️ 找不到領隊「${rawG}」`,'cmd-err');return;}
+    if(rawG&&!gFound){cmdLog(`⚠️ 找不到「${rawG}」`,'cmd-err');return;}
     const rows=[];
-    for(let d=1;d<=dim(m);d++){
-      const entries=scheduleData[`${m}|${d}|${gFound}`]||[];
-      entries.forEach(e=>rows.push(`${m}/${d} [${TYPES[e.type].label}] ${e.text||''}`));
-    }
+    for(let d=1;d<=dim(m);d++){(scheduleData[`${m}|${d}|${gFound}`]||[]).forEach(e=>rows.push(`${m}/${d} [${TYPES[e.type].label}] ${e.text||''}`));}
     if(!rows.length){cmdLog(`📋 ${gFound} ${m}月：無紀錄`,'cmd-info');return;}
-    cmdLog(`📋 ${gFound} ${m}月共${rows.length}筆：`,'cmd-info');
-    rows.forEach(r=>cmdLog('  '+r)); return;
+    cmdLog(`📋 ${gFound} ${m}月共${rows.length}筆：`,'cmd-info');rows.forEach(r=>cmdLog('  '+r));return;
   }
 
-  // ── /行程 "TMB-G1" ──
+  // /行程 "TMB-G1"
   if(/^\/行程/.test(cmd)){
     const tripName=getQuoted(cmd)||(cmd.match(/^\/行程\s+(.+)/)||[])[1]?.trim();
     if(!tripName){cmdLog('⚠️ 請輸入行程名稱','cmd-err');return;}
     const found=[];
-    Object.entries(scheduleData).forEach(([k,entries])=>{
-      if(entries.some(e=>e.type==='trip'&&e.text===tripName)){
-        const [m,d,g]=k.split('|'); found.push(`${m}/${d} ${g}`);
-      }
-    });
-    if(!found.length){cmdLog(`⚠️ 找不到行程「${tripName}」`,'cmd-err');return;}
-    cmdLog(`📋 「${tripName}」(${found.length}筆)：${found.slice(0,8).join('、')}${found.length>8?'...':''}`,'cmd-info'); return;
+    Object.entries(scheduleData).forEach(([k,entries])=>{if(entries.some(e=>e.type==='trip'&&e.text===tripName)){const[m,d,g]=k.split('|');found.push(`${m}/${d} ${g}`);}});
+    if(!found.length){cmdLog(`⚠️ 找不到「${tripName}」`,'cmd-err');return;}
+    cmdLog(`📋 「${tripName}」(${found.length}筆)：${found.slice(0,8).join('、')}${found.length>8?'...':''}`,'cmd-info');return;
   }
 
-  // ── /統計 9月 ──
+  // /統計 9月
   if(/^\/統計\s+(\d{1,2})月?/.test(cmd)){
     const m=parseInt(cmd.match(/^\/統計\s+(\d{1,2})月?/)[1]);
-    const stats={};
-    guides.forEach(g=>{stats[g]={days:0,trips:0};});
-    for(let d=1;d<=dim(m);d++){
-      guides.forEach(g=>{
-        if((scheduleData[`${m}|${d}|${g}`]||[]).some(e=>e.type==='trip')){
-          stats[g].days++;
-          if(d===1||!(scheduleData[`${m}|${d-1}|${g}`]||[]).some(e=>e.type==='trip'))stats[g].trips++;
-        }
-      });
-    }
+    const stats={};guides.forEach(g=>{stats[g]={days:0,trips:0};});
+    for(let d=1;d<=dim(m);d++){guides.forEach(g=>{if((scheduleData[`${m}|${d}|${g}`]||[]).some(e=>e.type==='trip')){stats[g].days++;if(d===1||!(scheduleData[`${m}|${d-1}|${g}`]||[]).some(e=>e.type==='trip'))stats[g].trips++;}});}
     const sorted=guides.filter(g=>stats[g].days>0).sort((a,b)=>stats[b].days-stats[a].days);
     if(!sorted.length){cmdLog(`📊 ${m}月無出團紀錄`,'cmd-info');return;}
-    cmdLog(`📊 ${m}月出團統計：`,'cmd-info');
-    sorted.forEach(g=>cmdLog(`  ${g}：${stats[g].days}天 / ${stats[g].trips}趟`)); return;
+    cmdLog(`📊 ${m}月出團統計：`,'cmd-info');sorted.forEach(g=>cmdLog(`  ${g}：${stats[g].days}天/${stats[g].trips}趟`));return;
   }
 
-  // ── /缺會議 ──
-  if(/^\/缺會議/.test(cmd)){
-    if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
-    const missing=[];
-    const tripStarts={};
-    Object.entries(scheduleData).forEach(([k,entries])=>{
-      const [m,d,g]=k.split('|');
-      entries.forEach(e=>{
-        if(e.type==='trip'){
-          const prev=scheduleData[`${parseInt(m)}|${parseInt(d)-1}|${g}`]||[];
-          if(!prev.some(x=>x.type==='trip'&&x.text===e.text)){
-            const tk=`${e.text}|${g}`;
-            if(!tripStarts[tk]) tripStarts[tk]={name:e.text,g,m:parseInt(m),d:parseInt(d)};
-          }
-        }
-      });
-    });
-    Object.values(tripStarts).forEach(({name,g})=>{
-      const hasPre=Object.entries(scheduleData).some(([k,es])=>k.endsWith('|'+g)&&es.some(e=>e.type==='pre'));
-      const hasHand=Object.entries(scheduleData).some(([k,es])=>k.endsWith('|'+g)&&es.some(e=>e.type==='hand'));
-      if(!hasPre||!hasHand) missing.push(`${name}(${g}) 缺${!hasPre?'行前':''}${!hasHand?'交團':''}`);
-    });
-    if(!missing.length){cmdLog('✅ 所有行程都有行前/交團紀錄','cmd-ok');return;}
-    cmdLog(`⚠️ 缺會議紀錄（${missing.length}個）：`,'cmd-err');
-    missing.slice(0,10).forEach(r=>cmdLog('  '+r)); return;
-  }
-
-  // ── /清除 Chris 9/5 [類型] ──
+  // /清除
   if(/^\/清除/.test(cmd)){
-    const dm=cmd.match(/(\d{1,2})[\/月](\d{1,2})/);
-    if(!dm){cmdLog('⚠️ 請包含日期','cmd-err');return;}
+    const dm=cmd.match(/(\d{1,2})[\/月](\d{1,2})/);if(!dm){cmdLog('⚠️ 請包含日期','cmd-err');return;}
     const m=parseInt(dm[1]),d=parseInt(dm[2]);
-    const words=cmd.replace('/清除','').replace(dm[0],'').trim().split(/\s+/);
-    const gFound=words.map(w=>findGuide(w)).find(Boolean);
+    const gFound=cmd.replace('/清除','').replace(dm[0],'').trim().split(/\s+/).map(w=>findGuide(w)).find(Boolean);
     if(!gFound){cmdLog('⚠️ 找不到領隊','cmd-err');return;}
     if(!canEdit(gFound)){cmdLog('⚠️ 無權限','cmd-err');return;}
     const typeMatch=Object.keys(TYPES_MAP).find(t=>cmd.includes(t));
     const k=`${m}|${d}|${gFound}`;
-    if(typeMatch){
-      const t=TYPES_MAP[typeMatch];
-      scheduleData[k]=(scheduleData[k]||[]).filter(e=>e.type!==t);
-      if(!scheduleData[k].length) delete scheduleData[k];
-      cmdLog(`✅ 已清除 ${gFound} ${m}/${d} [${typeMatch}]`,'cmd-ok');
-    } else {
-      delete scheduleData[k];
-      cmdLog(`✅ 已清除 ${gFound} ${m}/${d} 全部`,'cmd-ok');
-    }
-    await saveSchedule(); return;
+    if(typeMatch){const t=TYPES_MAP[typeMatch];scheduleData[k]=(scheduleData[k]||[]).filter(e=>e.type!==t);if(!scheduleData[k].length)delete scheduleData[k];cmdLog(`✅ 已清除 ${gFound} ${m}/${d} [${typeMatch}]`,'cmd-ok');}
+    else{delete scheduleData[k];cmdLog(`✅ 已清除 ${gFound} ${m}/${d} 全部`,'cmd-ok');}
+    await saveSchedule();return;
   }
 
-  // ── /批次 Chris 9/5~9/13 "TMB-G1" ──
+  // /批次
   if(/^\/批次/.test(cmd)){
-    const rangeM=cmd.match(/(\d{1,2})[\/月](\d{1,2})[~～](\d{1,2})[\/月](\d{1,2})/);
-    if(!rangeM){cmdLog('⚠️ 請包含日期範圍，如 9/5~9/13','cmd-err');return;}
-    const m1=parseInt(rangeM[1]),d1=parseInt(rangeM[2]),m2=parseInt(rangeM[3]),d2=parseInt(rangeM[4]);
-    const words=cmd.replace('/批次','').replace(rangeM[0],'').trim().split(/\s+/);
-    const gFound=words.map(w=>findGuide(w)).find(Boolean);
+    const rM=cmd.match(/(\d{1,2})[\/月](\d{1,2})[~～](\d{1,2})[\/月](\d{1,2})/);
+    if(!rM){cmdLog('⚠️ 請包含日期範圍','cmd-err');return;}
+    const m1=parseInt(rM[1]),d1=parseInt(rM[2]),m2=parseInt(rM[3]),d2=parseInt(rM[4]);
+    const gFound=cmd.replace('/批次','').replace(rM[0],'').trim().split(/\s+/).map(w=>findGuide(w)).find(Boolean);
     if(!gFound){cmdLog('⚠️ 找不到領隊','cmd-err');return;}
     if(!canEdit(gFound)){cmdLog('⚠️ 無權限','cmd-err');return;}
     const typeKey=Object.keys(TYPES_MAP).find(t=>cmd.includes(t))||'行程';
     const type=TYPES_MAP[typeKey];
-    const tripName=getQuoted(cmd)||(cmd.replace('/批次','').replace(gFound,'').replace(rangeM[0],'').replace(typeKey,'').trim());
-    let cur=new Date(2026,m1-1,d1);
-    const endDt=new Date(2026,m2-1,d2);
-    let count=0;
-    while(cur<=endDt){
-      const m=cur.getMonth()+1,d=cur.getDate();
-      const k=`${m}|${d}|${gFound}`;
-      if(!scheduleData[k]) scheduleData[k]=[];
+    const tripName=getQuoted(cmd)||(cmd.replace('/批次','').replace(gFound,'').replace(rM[0],'').replace(typeKey,'').trim());
+    let cur=new Date(2026,m1-1,d1),count=0;const edt=new Date(2026,m2-1,d2);
+    while(cur<=edt){
+      const m=cur.getMonth()+1,d=cur.getDate(),k=`${m}|${d}|${gFound}`;
+      if(!scheduleData[k])scheduleData[k]=[];
       if(SINGLE_TYPES.includes(type)){const idx=scheduleData[k].findIndex(e=>SINGLE_TYPES.includes(e.type));if(idx>=0)scheduleData[k].splice(idx,1);}
-      if(!scheduleData[k].some(e=>e.type===type&&e.text===(tripName||TYPES[type].label))){
-        scheduleData[k].push({type,text:tripName||TYPES[type].label}); count++;
-      }
+      if(!scheduleData[k].some(e=>e.type===type&&e.text===(tripName||TYPES[type].label))){scheduleData[k].push({type,text:tripName||TYPES[type].label});count++;}
       cur.setDate(cur.getDate()+1);
     }
-    await saveSchedule();
-    cmdLog(`✅ 已批次填入 ${gFound} ${m1}/${d1}~${m2}/${d2} [${typeKey}] ${tripName||''} 共${count}天`,'cmd-ok'); return;
+    await saveSchedule();cmdLog(`✅ 已批次填入 ${gFound} ${m1}/${d1}~${m2}/${d2} [${typeKey}] ${tripName||''} 共${count}天`,'cmd-ok');return;
   }
 
-  // ── 自然語言：Chris 9/5 "TMB-G1" 或 Chris 9/5 TMB-G1 ──
+  // 自然語言：Chris 9/5 "TMB-G1"
   const dm=cmd.match(/(\d{1,2})[\/月](\d{1,2})/);
   if(!dm){cmdLog('⚠️ 找不到日期，或輸入 /指令（按「指令說明 ?」查看）','cmd-err');return;}
   const m=parseInt(dm[1]),d=parseInt(dm[2]);
   if(m<1||m>12||d<1||d>dim(m)){cmdLog('⚠️ 日期不正確','cmd-err');return;}
-
-  // find guide (fuzzy, ignore quoted)
-  const withoutQuoted=stripQuoted(cmd).replace(dm[0],'').trim();
-  const words2=withoutQuoted.split(/\s+/);
-  let gFound=words2.map(w=>findGuide(w)).find(Boolean);
+  const wq=stripQuoted(cmd).replace(dm[0],'').trim().split(/\s+/);
+  let gFound=wq.map(w=>findGuide(w)).find(Boolean);
   if(!gFound){cmdLog(`⚠️ 找不到領隊，現有：${guides.slice(0,5).join('、')}...`,'cmd-err');return;}
-  if(!canEdit(gFound)){cmdLog('⚠️ 無權限編輯此領隊','cmd-err');return;}
-
-  const meetModeMatch=cmd.match(/(線上|回看)/);
-  const meetMode=meetModeMatch?meetModeMatch[1]:null;
+  if(!canEdit(gFound)){cmdLog('⚠️ 無權限','cmd-err');return;}
+  const modeM=cmd.match(/(線上|回看)/);
+  const meetMode=modeM?modeM[1]:null;
   const typeKey=Object.keys(TYPES_MAP).find(t=>cmd.includes(t)&&t!=='行程');
-  const timeMatch=cmd.match(/(\d{1,2}:\d{2})/);
-  let type='trip', text='';
-
+  const timeM2=cmd.match(/(\d{1,2}:\d{2})/);
+  let type='trip',text='';
   if(typeKey){
     type=TYPES_MAP[typeKey];
-    const quotedText=getQuoted(cmd);
-    if(quotedText){
-      const parts=[];
-      if(timeMatch&&meetMode!=='回看') parts.push(timeMatch[1]);
-      parts.push(quotedText);
-      if(meetMode&&meetMode!=='現場') parts.push(`[${meetMode}]`);
-      text=parts.join(' ');
-    } else {
-      const parts=[];
-      if(timeMatch&&meetMode!=='回看') parts.push(timeMatch[1]);
-      const rest=cmd.replace(gFound,'').replace(dm[0],'').replace(typeKey,'')
-        .replace(timeMatch?timeMatch[0]:'','').replace(meetMode||'','').replace(/[，,。\s]+/g,' ').trim();
-      if(rest) parts.push(rest);
-      if(meetMode&&meetMode!=='現場') parts.push(`[${meetMode}]`);
-      text=parts.join(' ')||TYPES[type].label;
-    }
+    const qt=getQuoted(cmd);
+    const parts=[];
+    if(timeM2&&meetMode!=='回看')parts.push(timeM2[1]);
+    if(qt)parts.push(qt);
+    else{const r=cmd.replace(gFound,'').replace(dm[0],'').replace(typeKey,'').replace(timeM2?timeM2[0]:'','').replace(meetMode||'','').replace(/[，,。\s]+/g,' ').trim();if(r)parts.push(r);}
+    if(meetMode&&meetMode!=='現場')parts.push(`[${meetMode}]`);
+    text=parts.join(' ')||TYPES[type].label;
   } else {
     text=getQuoted(cmd)||(cmd.replace(gFound,'').replace(dm[0],'').replace(/[，,。\s]+/g,' ').trim());
     if(!text){cmdLog('⚠️ 請輸入行程名稱','cmd-err');return;}
   }
-
   const k=`${m}|${d}|${gFound}`;
-  if(!scheduleData[k]) scheduleData[k]=[];
+  if(!scheduleData[k])scheduleData[k]=[];
   if(SINGLE_TYPES.includes(type)){const idx=scheduleData[k].findIndex(e=>SINGLE_TYPES.includes(e.type));if(idx>=0)scheduleData[k].splice(idx,1);}
   scheduleData[k].push({type,text:text||TYPES[type].label});
-  if(curMonth!==m) curMonth=m;
+  if(curMonth!==m)curMonth=m;
   await saveSchedule();
   cmdLog(`✅ ${gFound} ${m}/${d} → [${TYPES[type].label}] ${text||TYPES[type].label}`,'cmd-ok');
-  setTimeout(()=>{
-    const rows=document.querySelectorAll('#tbody tr');
-    if(rows[d-1]) rows[d-1].scrollIntoView({block:'center',behavior:'smooth'});
-  },100);
+  setTimeout(()=>{const rows=document.querySelectorAll('#tbody tr');if(rows[d-1])rows[d-1].scrollIntoView({block:'center',behavior:'smooth'});},100);
 } // end execCmd
+
 
 // show command bar after login
 const _origShowApp = show;
