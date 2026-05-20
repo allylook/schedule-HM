@@ -174,6 +174,32 @@ select:focus,input:focus{border-color:var(--blue-border);}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .loading{position:fixed;inset:0;background:rgba(255,255,255,.85);z-index:500;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text2);}
 
+/* ── COMMAND BAR ── */
+#cmdBar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid #1f5c9e;z-index:300;box-shadow:0 -4px 20px rgba(0,0,0,.08);}
+#cmdBarInner{display:flex;align-items:center;gap:8px;padding:8px 16px;}
+#cmdInput2{flex:1;font-size:13px;padding:8px 12px;border-radius:var(--radius);border:1.5px solid var(--border);background:#f8f9fc;color:var(--text);font-family:inherit;outline:none;transition:all .15s;}
+#cmdInput2:focus{border-color:#1f5c9e;background:#fff;box-shadow:0 0 0 3px #ddeeff;}
+#cmdInput2::placeholder{color:var(--text3);}
+#cmdExecBtn{padding:8px 18px;font-size:13px;border-radius:var(--radius);border:none;background:#1f5c9e;color:#fff;cursor:pointer;font-family:inherit;font-weight:500;white-space:nowrap;transition:all .15s;}
+#cmdExecBtn:hover{background:#1a4f8a;}
+#cmdHelpBtn{padding:8px 12px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;font-family:inherit;white-space:nowrap;}
+#cmdHelpBtn:hover{background:#e8edf5;}
+#cmdLog{max-height:72px;overflow-y:auto;padding:4px 16px 6px;font-size:12px;border-top:1px solid #eef0f5;}
+.cmd-msg{padding:2px 0;color:var(--text2);}
+.cmd-ok{color:#1a7a45;font-weight:500;}
+.cmd-err{color:#a01515;}
+.cmd-info{color:#1557a0;}
+#cmdHelp{display:none;position:fixed;bottom:130px;left:16px;right:16px;max-width:640px;margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:400;padding:16px;max-height:60vh;overflow-y:auto;}
+#cmdHelp h4{font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+#cmdHelp h4 button{border:none;background:none;cursor:pointer;font-size:18px;color:var(--text3);}
+.help-section{margin-bottom:12px;}
+.help-section h5{font-size:11px;font-weight:600;color:#1f5c9e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #eef0f5;}
+.help-row{display:grid;grid-template-columns:1fr auto;gap:8px;padding:5px 0;border-bottom:1px solid #f5f6f8;align-items:baseline;}
+.help-cmd{font-size:12px;font-family:monospace;color:var(--text);}
+.help-desc{font-size:11px;color:var(--text2);}
+.help-row:last-child{border-bottom:none;}
+#app{padding-bottom:130px;}
+
 /* query & admin light overrides */
 .q-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
 .q-card h4{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;}
@@ -332,6 +358,49 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
   </div>
 </div>
 
+<!-- Command Bar -->
+<div id="cmdBar" style="display:none">
+  <div id="cmdLog"></div>
+  <div id="cmdBarInner">
+    <input id="cmdInput2" type="text" placeholder="指令：Chris 9/5 TMB-G1 ｜ /新增領隊 Amy ｜ /改名 建源 阿源 ｜ /查詢 9月 Chris ｜ /空檔 9/5" autocomplete="off"/>
+    <button id="cmdHelpBtn">指令說明 ?</button>
+    <button id="cmdExecBtn">執行 ↵</button>
+  </div>
+</div>
+
+<!-- Help Panel -->
+<div id="cmdHelp">
+  <h4>指令說明 <button onclick="document.getElementById('cmdHelp').style.display='none'">×</button></h4>
+  <div class="help-section">
+    <h5>班表操作</h5>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 TMB-G1</span><span class="help-desc">填入行程</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 行前 14:00 TMB-G1</span><span class="help-desc">填入行前會議</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 交團 10:00 TMB-G1</span><span class="help-desc">填入交團</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 檢討 16:00 TMB-G1</span><span class="help-desc">填入檢討</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 延回</span><span class="help-desc">標記延回</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 提早去</span><span class="help-desc">標記提早去</span></div>
+    <div class="help-row"><span class="help-cmd">Chris 9/5 請假</span><span class="help-desc">標記請假</span></div>
+    <div class="help-row"><span class="help-cmd">/清除 Chris 9/5 行程</span><span class="help-desc">清除特定類型</span></div>
+    <div class="help-row"><span class="help-cmd">/清除 Chris 9/5</span><span class="help-desc">清除該格全部</span></div>
+    <div class="help-row"><span class="help-cmd">/批次 Chris 9/5~9/13 TMB-G1</span><span class="help-desc">批次填入日期範圍</span></div>
+  </div>
+  <div class="help-section">
+    <h5>領隊管理（管理員限定）</h5>
+    <div class="help-row"><span class="help-cmd">/新增領隊 Amy</span><span class="help-desc">新增領隊</span></div>
+    <div class="help-row"><span class="help-cmd">/刪除領隊 Amy</span><span class="help-desc">刪除領隊及所有資料</span></div>
+    <div class="help-row"><span class="help-cmd">/改名 建源 阿源</span><span class="help-desc">領隊改名（同步所有資料）</span></div>
+    <div class="help-row"><span class="help-cmd">/名單</span><span class="help-desc">顯示所有領隊</span></div>
+  </div>
+  <div class="help-section">
+    <h5>查詢</h5>
+    <div class="help-row"><span class="help-cmd">/查詢 Chris 9月</span><span class="help-desc">查詢某人某月行程</span></div>
+    <div class="help-row"><span class="help-cmd">/空檔 9/5</span><span class="help-desc">查詢某天有空的領隊</span></div>
+    <div class="help-row"><span class="help-cmd">/行程 TMB-G1</span><span class="help-desc">查詢某行程所有領隊</span></div>
+    <div class="help-row"><span class="help-cmd">/統計 9月</span><span class="help-desc">查詢某月出團統計</span></div>
+    <div class="help-row"><span class="help-cmd">/缺會議</span><span class="help-desc">列出缺行前/交團/檢討的行程</span></div>
+  </div>
+</div>
+
 <!-- Firebase + App Logic -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -355,7 +424,7 @@ const db = getFirestore(fbApp);
 const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12];
 const MN = {1:'1月',2:'2月',3:'3月',4:'4月',5:'5月',6:'6月',7:'7月',8:'8月',9:'9月',10:'10月',11:'11月',12:'12月'};
 const WD = ['一','二','三','四','五','六','日'];
-const HOL = {'1/1':'元旦','2/8':'除夕','2/9':'春節','2/10':'春節','2/11':'春節','2/12':'春節','2/13':'春節','2/28':'和平紀念日','4/4':'兒童節','4/5':'清明節','5/1':'勞動節','5/31':'端午節','9/19':'中秋節','10/10':'國慶日'};
+let HOL = {'1/1':'元旦','1/27':'農曆除夕補假','1/28':'農曆除夕','1/29':'春節','1/30':'春節','1/31':'春節','2/1':'春節','2/2':'春節','2/3':'初六補假','2/28':'和平紀念日','3/2':'和平紀念日補假','4/3':'兒童節補假','4/4':'兒童節','4/5':'清明節','5/1':'勞動節','5/31':'端午節','6/1':'端午節補假','9/19':'中秋節','9/21':'中秋節補假','10/9':'國慶日補假','10/10':'國慶日'};
 const TYPES = {
   trip:{label:'行程',cls:'t-trip',sel:'s-trip'},
   early:{label:'提早去',cls:'t-early',sel:'s-early'},
@@ -419,6 +488,7 @@ onAuthStateChanged(auth, async user => {
     hide('authScreen');
     hide('loadingScreen');
     show('app');
+    showCmdBar();
   } else {
     currentUser = null; isAdmin = false;
     if(unsubSchedule){ unsubSchedule(); unsubSchedule=null; }
@@ -430,6 +500,10 @@ onAuthStateChanged(auth, async user => {
 
 // ── Firestore Listeners ──
 function setupListeners(){
+  // Holidays
+  getDoc(doc(db,'config','holidays_2026')).then(snap=>{
+    if(snap.exists()) HOL = snap.data().data||HOL;
+  });
   // Guides
   const guidesRef = doc(db,'config','guides');
   unsubGuides = onSnapshot(guidesRef, snap => {
@@ -692,7 +766,273 @@ window.exportExcel=function(){
 };
 
 // ── Admin ──
-async function loadAdminUsers(){
+// ── Command Bar ──
+const TYPES_MAP = {'行程':'trip','提早去':'early','延回':'late','請假':'leave','行前':'pre','交團':'hand','檢討':'review'};
+const SINGLE_TYPES = ['trip','early','late','leave'];
+
+function cmdLog(msg, cls=''){
+  const el=document.getElementById('cmdLog');
+  const div=document.createElement('div');
+  div.className='cmd-msg '+(cls||'');
+  div.textContent=msg;
+  el.appendChild(div);
+  el.scrollTop=el.scrollHeight;
+  // keep max 20 lines
+  while(el.children.length>20) el.removeChild(el.firstChild);
+}
+
+function showCmdBar(){
+  const bar=document.getElementById('cmdBar');
+  if(isAdmin||userRole==='guide') bar.style.display='block';
+}
+
+document.getElementById('cmdHelpBtn').onclick=()=>{
+  const h=document.getElementById('cmdHelp');
+  h.style.display=h.style.display==='none'?'block':'none';
+};
+
+document.getElementById('cmdExecBtn').onclick=()=>{
+  const inp=document.getElementById('cmdInput2');
+  execCmd(inp.value.trim());
+  inp.value='';
+};
+document.getElementById('cmdInput2').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    const inp=document.getElementById('cmdInput2');
+    execCmd(inp.value.trim());
+    inp.value='';
+  }
+  if(e.key==='Escape') document.getElementById('cmdHelp').style.display='none';
+});
+
+async function execCmd(raw){
+  if(!raw) return;
+  const cmd = raw.trim();
+  cmdLog('▶ '+cmd);
+
+  // ── /新增領隊 Amy ──
+  if(/^\/新增領隊\s+(.+)/.test(cmd)){
+    if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
+    const name=cmd.match(/^\/新增領隊\s+(.+)/)[1].trim();
+    if(guides.includes(name)){cmdLog(`⚠️ 「${name}」已存在`,'cmd-err');return;}
+    guides.push(name); await saveGuides();
+    cmdLog(`✅ 已新增領隊「${name}」`,'cmd-ok'); return;
+  }
+
+  // ── /刪除領隊 Amy ──
+  if(/^\/刪除領隊\s+(.+)/.test(cmd)){
+    if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
+    const name=cmd.match(/^\/刪除領隊\s+(.+)/)[1].trim();
+    if(!guides.includes(name)){cmdLog(`⚠️ 找不到「${name}」`,'cmd-err');return;}
+    guides=guides.filter(g=>g!==name);
+    // delete all schedule entries for this guide
+    Object.keys(scheduleData).forEach(k=>{if(k.endsWith('|'+name))delete scheduleData[k];});
+    await saveGuides(); await saveSchedule();
+    cmdLog(`✅ 已刪除領隊「${name}」及所有紀錄`,'cmd-ok'); return;
+  }
+
+  // ── /改名 舊名 新名 ──
+  if(/^\/改名\s+(\S+)\s+(\S+)/.test(cmd)){
+    if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
+    const [,oldN,newN]=cmd.match(/^\/改名\s+(\S+)\s+(\S+)/);
+    if(!guides.includes(oldN)){cmdLog(`⚠️ 找不到「${oldN}」`,'cmd-err');return;}
+    if(guides.includes(newN)){cmdLog(`⚠️ 「${newN}」已存在`,'cmd-err');return;}
+    guides=guides.map(g=>g===oldN?newN:g);
+    const newData={};
+    Object.entries(scheduleData).forEach(([k,v])=>{
+      const parts=k.split('|');
+      if(parts[2]===oldN) parts[2]=newN;
+      newData[parts.join('|')]=v;
+    });
+    scheduleData=newData;
+    await saveGuides(); await saveSchedule();
+    cmdLog(`✅ 已將「${oldN}」改名為「${newN}」`,'cmd-ok'); return;
+  }
+
+  // ── /名單 ──
+  if(/^\/名單/.test(cmd)){
+    cmdLog(`📋 領隊名單（${guides.length}人）：${guides.join('、')}`,'cmd-info'); return;
+  }
+
+  // ── /空檔 9/5 ──
+  if(/^\/空檔\s+(\d{1,2})[\/月](\d{1,2})/.test(cmd)){
+    const [,m,d]=cmd.match(/^\/空檔\s+(\d{1,2})[\/月](\d{1,2})/);
+    const mi=parseInt(m), di=parseInt(d);
+    const busy=guides.filter(g=>(scheduleData[`${mi}|${di}|${g}`]||[]).length>0);
+    const free=guides.filter(g=>!busy.includes(g));
+    cmdLog(`📅 ${mi}/${di} 有空(${free.length})：${free.join('、')||'無'}`,'cmd-info');
+    cmdLog(`📅 ${mi}/${di} 有行程(${busy.length})：${busy.join('、')||'無'}`,'cmd-info'); return;
+  }
+
+  // ── /查詢 Chris 9月 ──
+  if(/^\/查詢\s+(\S+)\s+(\d{1,2})月?/.test(cmd)){
+    const [,g,ms]=cmd.match(/^\/查詢\s+(\S+)\s+(\d{1,2})月?/);
+    const m=parseInt(ms);
+    const gFound=guides.find(x=>x===g||x.includes(g));
+    if(!gFound){cmdLog(`⚠️ 找不到領隊「${g}」`,'cmd-err');return;}
+    const rows=[];
+    for(let d=1;d<=dim(m);d++){
+      const entries=scheduleData[`${m}|${d}|${gFound}`]||[];
+      entries.forEach(e=>rows.push(`${m}/${d} [${TYPES[e.type].label}] ${e.text||''}`));
+    }
+    if(!rows.length){cmdLog(`📋 ${gFound} ${m}月：無紀錄`,'cmd-info');return;}
+    cmdLog(`📋 ${gFound} ${m}月共${rows.length}筆：`,'cmd-info');
+    rows.forEach(r=>cmdLog('  '+r)); return;
+  }
+
+  // ── /行程 TMB-G1 ──
+  if(/^\/行程\s+(.+)/.test(cmd)){
+    const tripName=cmd.match(/^\/行程\s+(.+)/)[1].trim();
+    const found=[];
+    Object.entries(scheduleData).forEach(([k,entries])=>{
+      if(entries.some(e=>e.type==='trip'&&e.text===tripName)){
+        const [m,d,g]=k.split('|');
+        found.push(`${m}/${d} ${g}`);
+      }
+    });
+    if(!found.length){cmdLog(`⚠️ 找不到行程「${tripName}」`,'cmd-err');return;}
+    cmdLog(`📋 行程「${tripName}」（${found.length}筆）：${found.slice(0,5).join('、')}${found.length>5?'...':''}`,'cmd-info'); return;
+  }
+
+  // ── /統計 9月 ──
+  if(/^\/統計\s+(\d{1,2})月?/.test(cmd)){
+    const m=parseInt(cmd.match(/^\/統計\s+(\d{1,2})月?/)[1]);
+    const stats={};
+    guides.forEach(g=>{stats[g]={days:0,trips:0};});
+    for(let d=1;d<=dim(m);d++){
+      guides.forEach(g=>{
+        if((scheduleData[`${m}|${d}|${g}`]||[]).some(e=>e.type==='trip')){
+          stats[g].days++;
+          if(d===1||!(scheduleData[`${m}|${d-1}|${g}`]||[]).some(e=>e.type==='trip'))stats[g].trips++;
+        }
+      });
+    }
+    const sorted=guides.filter(g=>stats[g].days>0).sort((a,b)=>stats[b].days-stats[a].days);
+    if(!sorted.length){cmdLog(`📊 ${m}月無出團紀錄`,'cmd-info');return;}
+    cmdLog(`📊 ${m}月出團統計：`,'cmd-info');
+    sorted.forEach(g=>cmdLog(`  ${g}：${stats[g].days}天 / ${stats[g].trips}趟`)); return;
+  }
+
+  // ── /缺會議 ──
+  if(/^\/缺會議/.test(cmd)){
+    if(!isAdmin){cmdLog('⚠️ 需要管理員權限','cmd-err');return;}
+    const missing=[];
+    // find all trip starts
+    const tripStarts={};
+    Object.entries(scheduleData).forEach(([k,entries])=>{
+      const [m,d,g]=k.split('|');
+      entries.forEach(e=>{
+        if(e.type==='trip'){
+          const prev=scheduleData[`${parseInt(m)}|${parseInt(d)-1}|${g}`]||[];
+          if(!prev.some(x=>x.type==='trip'&&x.text===e.text)){
+            const tk=`${e.text}|${g}`;
+            if(!tripStarts[tk]) tripStarts[tk]={name:e.text,g,m:parseInt(m),d:parseInt(d)};
+          }
+        }
+      });
+    });
+    Object.values(tripStarts).forEach(({name,g,m,d})=>{
+      const hasPre=Object.entries(scheduleData).some(([k,es])=>k.endsWith('|'+g)&&es.some(e=>e.type==='pre'));
+      const hasHand=Object.entries(scheduleData).some(([k,es])=>k.endsWith('|'+g)&&es.some(e=>e.type==='hand'));
+      if(!hasPre||!hasHand) missing.push(`${name}(${g}) 缺${!hasPre?'行前':''}${!hasHand?'交團':''}`);
+    });
+    if(!missing.length){cmdLog('✅ 所有行程都有行前/交團紀錄','cmd-ok');return;}
+    cmdLog(`⚠️ 缺會議紀錄（${missing.length}個）：`,'cmd-err');
+    missing.slice(0,10).forEach(r=>cmdLog('  '+r)); return;
+  }
+
+  // ── /清除 Chris 9/5 [類型] ──
+  if(/^\/清除/.test(cmd)){
+    const dm=cmd.match(/(\d{1,2})[\/月](\d{1,2})/);
+    if(!dm){cmdLog('⚠️ 請包含日期','cmd-err');return;}
+    const m=parseInt(dm[1]),d=parseInt(dm[2]);
+    const gFound=guides.find(g=>cmd.includes(g));
+    if(!gFound){cmdLog('⚠️ 找不到領隊','cmd-err');return;}
+    if(!canEdit(gFound)){cmdLog('⚠️ 無權限編輯此領隊','cmd-err');return;}
+    const typeMatch=Object.keys(TYPES_MAP).find(t=>cmd.includes(t));
+    const k=`${m}|${d}|${gFound}`;
+    if(typeMatch){
+      const t=TYPES_MAP[typeMatch];
+      scheduleData[k]=(scheduleData[k]||[]).filter(e=>e.type!==t);
+      if(!scheduleData[k].length) delete scheduleData[k];
+      cmdLog(`✅ 已清除 ${gFound} ${m}/${d} [${typeMatch}]`,'cmd-ok');
+    } else {
+      delete scheduleData[k];
+      cmdLog(`✅ 已清除 ${gFound} ${m}/${d} 全部`,'cmd-ok');
+    }
+    await saveSchedule(); return;
+  }
+
+  // ── /批次 Chris 9/5~9/13 TMB-G1 ──
+  if(/^\/批次/.test(cmd)){
+    const rangeMatch=cmd.match(/(\d{1,2})[\/月](\d{1,2})[~～](\d{1,2})[\/月](\d{1,2})/);
+    if(!rangeMatch){cmdLog('⚠️ 請包含日期範圍，如 9/5~9/13','cmd-err');return;}
+    const m1=parseInt(rangeMatch[1]),d1=parseInt(rangeMatch[2]);
+    const m2=parseInt(rangeMatch[3]),d2=parseInt(rangeMatch[4]);
+    const gFound=guides.find(g=>cmd.includes(g));
+    if(!gFound){cmdLog('⚠️ 找不到領隊','cmd-err');return;}
+    if(!canEdit(gFound)){cmdLog('⚠️ 無權限','cmd-err');return;}
+    const typeKey=Object.keys(TYPES_MAP).find(t=>cmd.includes(t))||'行程';
+    const type=TYPES_MAP[typeKey];
+    const text=cmd.replace('/批次','').replace(gFound,'').replace(rangeMatch[0],'').replace(typeKey,'').trim();
+    let cur=new Date(2026,m1-1,d1);
+    const end=new Date(2026,m2-1,d2);
+    let count=0;
+    while(cur<=end){
+      const m=cur.getMonth()+1,d=cur.getDate();
+      const k=`${m}|${d}|${gFound}`;
+      if(!scheduleData[k]) scheduleData[k]=[];
+      if(SINGLE_TYPES.includes(type)){const idx=scheduleData[k].findIndex(e=>SINGLE_TYPES.includes(e.type));if(idx>=0)scheduleData[k].splice(idx,1);}
+      if(!scheduleData[k].some(e=>e.type===type&&e.text===(text||TYPES[type].label))){
+        scheduleData[k].push({type,text:text||TYPES[type].label}); count++;
+      }
+      cur.setDate(cur.getDate()+1);
+    }
+    await saveSchedule();
+    cmdLog(`✅ 已批次填入 ${gFound} ${m1}/${d1}~${m2}/${d2} [${typeKey}] ${text||''} 共${count}天`,'cmd-ok'); return;
+  }
+
+  // ── 自然語言：Chris 9/5 TMB-G1 ──
+  const dm=cmd.match(/(\d{1,2})[\/月](\d{1,2})/);
+  if(!dm){cmdLog('⚠️ 找不到日期，或使用 / 開頭的指令（輸入「?」查看說明）','cmd-err');return;}
+  const m=parseInt(dm[1]),d=parseInt(dm[2]);
+  if(m<1||m>12||d<1||d>dim(m)){cmdLog('⚠️ 日期不正確','cmd-err');return;}
+
+  const gFound=guides.find(g=>cmd.includes(g));
+  if(!gFound){cmdLog(`⚠️ 找不到領隊，請確認名字。現有：${guides.slice(0,5).join('、')}...`,'cmd-err');return;}
+  if(!canEdit(gFound)){cmdLog('⚠️ 無權限編輯此領隊','cmd-err');return;}
+
+  // 判斷類型
+  let type='trip', text='';
+  const typeKey=Object.keys(TYPES_MAP).find(t=>cmd.includes(t)&&t!=='行程');
+  if(typeKey){
+    type=TYPES_MAP[typeKey];
+    text=cmd.replace(gFound,'').replace(dm[0],'').replace(typeKey,'').replace(/[，,。\s]+/g,' ').trim();
+  } else {
+    text=cmd.replace(gFound,'').replace(dm[0],'').replace(/[，,。\s]+/g,' ').trim();
+    if(!text){cmdLog('⚠️ 請輸入行程名稱','cmd-err');return;}
+  }
+
+  const k=`${m}|${d}|${gFound}`;
+  if(!scheduleData[k]) scheduleData[k]=[];
+  if(SINGLE_TYPES.includes(type)){const idx=scheduleData[k].findIndex(e=>SINGLE_TYPES.includes(e.type));if(idx>=0)scheduleData[k].splice(idx,1);}
+  scheduleData[k].push({type,text:text||TYPES[type].label});
+
+  // jump to month
+  if(curMonth!==m){curMonth=m;}
+  await saveSchedule();
+  cmdLog(`✅ ${gFound} ${m}/${d} → [${TYPES[type].label}] ${text||TYPES[type].label}`,'cmd-ok');
+  // scroll to row
+  setTimeout(()=>{
+    const rows=document.querySelectorAll('#tbody tr');
+    if(rows[d-1]) rows[d-1].scrollIntoView({block:'center',behavior:'smooth'});
+  },100);
+}
+
+// show command bar after login
+const _origShowApp = show;
+function initCmdBar(){ showCmdBar(); }
+
   const snap=await getDocs(collection(db,'users'));
   const ul=document.getElementById('userList');ul.innerHTML='';
   snap.forEach(d=>{
