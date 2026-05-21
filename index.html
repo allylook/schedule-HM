@@ -262,6 +262,23 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
 <body>
 
 <!-- Auth -->
+<div id="waitingScreen" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1f5c9e 0%,#2980cc 100%);z-index:1000;flex-direction:column;align-items:center;justify-content:center;gap:20px;">
+  <div style="background:#fff;border-radius:16px;padding:36px 40px;text-align:center;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+    <div style="font-size:48px;margin-bottom:12px;">⏳</div>
+    <h2 style="font-size:20px;font-weight:700;color:#1f5c9e;margin-bottom:8px;">帳號審核中</h2>
+    <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:20px;">
+      您已成功登入！<br>
+      請通知管理員開通您的權限後，<br>
+      重新整理此頁面即可使用。
+    </p>
+    <div style="font-size:12px;color:#999;background:#f5f7fa;border-radius:8px;padding:10px 14px;margin-bottom:20px;">
+      已登入帳號：<strong id="waitingEmail"></strong>
+    </div>
+    <button onclick="location.reload()" style="padding:10px 24px;background:#1f5c9e;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;margin-right:8px;">🔄 重新整理</button>
+    <button onclick="firebase_signout()" style="padding:10px 24px;background:#f5f7fa;color:#555;border:1px solid #ddd;border-radius:8px;font-size:14px;cursor:pointer;">登出</button>
+  </div>
+</div>
+
 <div id="authScreen">
   <div class="auth-card">
     <div class="auth-logo">丘山<span>行</span></div>
@@ -674,6 +691,17 @@ onAuthStateChanged(auth, async user => {
     }
     isAdmin = userRole === 'admin';
     if(isAdmin){ show('adminBadge'); document.querySelector('[data-tab="admin"]').style.display=''; }
+
+    // 如果是 viewer（待審核）顯示等待畫面
+    if(userRole === 'viewer'){
+      hide('authScreen');
+      hide('loadingScreen');
+      hide('app');
+      document.getElementById('waitingEmail').textContent = user.email;
+      document.getElementById('waitingScreen').style.display='flex';
+      return;
+    }
+
     setupListeners();
     hide('authScreen');
     hide('loadingScreen');
@@ -1902,7 +1930,10 @@ async function execCmd(raw){
 } // end execCmd
 
 
-// show command bar after login
+window.firebase_signout = async function(){
+  await signOut(auth);
+  document.getElementById('waitingScreen').style.display='none';
+};
 const _origShowApp = show;
 function initCmdBar(){ showCmdBar(); }
 
