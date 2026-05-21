@@ -1413,7 +1413,10 @@ window.ctxDelete = async function() {
     toast('已刪除');
   }
   ctxMenu.style.display = 'none';
-}; = {'行程':'trip','提早去':'early','延回':'late','請假':'leave','行前':'pre','交團':'hand','檢討':'review'};
+};
+
+// ── Command Bar ──
+const TYPES_MAP = {'行程':'trip','提早去':'early','延回':'late','請假':'leave','行前':'pre','交團':'hand','檢討':'review'};
 const SINGLE_TYPES = ['trip','early','late','leave'];
 
 function cmdLog(msg, cls=''){
