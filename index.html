@@ -906,23 +906,63 @@ window.queryFree=function(){
 window.queryTrip=function(){
   const name=document.getElementById('qTripName').value.trim();
   if(!name) return;
-  document.getElementById('queryTitle').textContent=`行程「${name}」— 領隊紀錄`;
-  const guideSet={};
+  document.getElementById('queryTitle').textContent=`搜尋「${name}」— 符合的行程`;
+  // Group by exact trip name + guide
+  const tripGuideMap={};
   Object.entries(scheduleData).forEach(([k,entries])=>{
-    if(entries.some(e=>e.type==='trip'&&e.text.includes(name))){
-      const[m,d,g]=k.split('|');
-      if(!guideSet[g]) guideSet[g]={guide:g,days:[]};
-      guideSet[g].days.push(new Date(2026,parseInt(m)-1,parseInt(d)));
-    }
+    const[m,d,g]=k.split('|');
+    entries.forEach(e=>{
+      if(e.type==='trip'&&e.text.toLowerCase().includes(name.toLowerCase())){
+        const key=`${e.text}|||${g}`;
+        if(!tripGuideMap[key]) tripGuideMap[key]={tripName:e.text,guide:g,days:[]};
+        tripGuideMap[key].days.push(new Date(2026,parseInt(m)-1,parseInt(d)));
+      }
+    });
   });
   const area=document.getElementById('resultArea');
-  if(!Object.keys(guideSet).length){area.innerHTML='<div style="color:var(--text2);padding:20px">找不到此行程</div>';return;}
-  const rows=Object.values(guideSet).map(({guide,days})=>{
+  if(!Object.keys(tripGuideMap).length){area.innerHTML='<div style="color:var(--text2);padding:20px">找不到符合的行程</div>';return;}
+
+  // For each trip+guide, find meetings within window
+  const rows=Object.values(tripGuideMap).map(({tripName,guide,days})=>{
     days.sort((a,b)=>a-b);
     const first=days[0],last=days[days.length-1];
-    return {guide,start:`${first.getMonth()+1}/${first.getDate()}`,end:`${last.getMonth()+1}/${last.getDate()}`,days:days.length};
-  });
-  area.innerHTML=`<table class="result-table"><thead><tr><th>領隊</th><th>出發</th><th>結束</th><th>天數</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.guide}</td><td>${r.start}</td><td>${r.end}</td><td>${r.days}天</td></tr>`).join('')}</tbody></table>`;
+    const preWin=new Date(first); preWin.setDate(preWin.getDate()-60);
+    const handWin=new Date(first); handWin.setDate(handWin.getDate()-30);
+    const revWin=new Date(last); revWin.setDate(revWin.getDate()+30);
+    const meetings={pre:[],hand:[],review:[]};
+    Object.entries(scheduleData).forEach(([k,entries])=>{
+      const[m,d,g2]=k.split('|');
+      if(g2!==guide) return;
+      const dt=new Date(2026,parseInt(m)-1,parseInt(d));
+      entries.forEach(e=>{
+        if(e.type==='pre'&&dt>=preWin&&dt<=first) meetings.pre.push({m:parseInt(m),d:parseInt(d),text:e.text});
+        if(e.type==='hand'&&dt>=handWin&&dt<=first) meetings.hand.push({m:parseInt(m),d:parseInt(d),text:e.text});
+        if(e.type==='review'&&dt>=last&&dt<=revWin) meetings.review.push({m:parseInt(m),d:parseInt(d),text:e.text});
+      });
+    });
+    const fmtMeet=(items)=>items.length?items.map(i=>`${i.m}/${i.d} ${i.text}`).join('<br>'):'<span style="color:#ccc">－</span>';
+    return {tripName,guide,
+      start:`${first.getMonth()+1}/${first.getDate()}`,
+      end:`${last.getMonth()+1}/${last.getDate()}`,
+      days:days.length,
+      pre:fmtMeet(meetings.pre),
+      hand:fmtMeet(meetings.hand),
+      review:fmtMeet(meetings.review)
+    };
+  }).sort((a,b)=>a.tripName!==b.tripName?a.tripName.localeCompare(b.tripName):a.start.localeCompare(b.start));
+
+  area.innerHTML=`<table class="result-table">
+    <thead><tr><th>行程名稱</th><th>領隊</th><th>出發</th><th>結束</th><th>天數</th><th>行前</th><th>交團</th><th>檢討</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td><strong>${r.tripName}</strong></td>
+      <td>${r.guide}</td>
+      <td>${r.start}</td>
+      <td>${r.end}</td>
+      <td>${r.days}天</td>
+      <td style="font-size:11px">${r.pre}</td>
+      <td style="font-size:11px">${r.hand}</td>
+      <td style="font-size:11px">${r.review}</td>
+    </tr>`).join('')}</tbody></table>`;
 };
 
 window.queryStat=function(){
