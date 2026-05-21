@@ -985,28 +985,42 @@ window.queryStat=function(){
   const stats={};
   guides.forEach(g=>{stats[g]={days:0,trips:0,tripList:[]};});
 
-  // Build trip list per guide
-  for(let m=mStart;m<=mEnd;m++){
+  // Build trip list per guide - scan full year but only count days within range
+  for(let m=1;m<=12;m++){
     for(let d=1;d<=dim(m);d++){
       guides.forEach(g=>{
         const entries=scheduleData[`${m}|${d}|${g}`]||[];
         const tripEntry=entries.find(e=>e.type==='trip');
         if(tripEntry){
-          stats[g].days++;
-          // Check if new trip (first day)
-          const prevEntries=scheduleData[`${m}|${d-1}|${g}`]||[];
-          const isNewTrip=d===1||!prevEntries.some(e=>e.type==='trip'&&e.text===tripEntry.text);
+          // Check previous day (handle cross-month)
+          let prevDate;
+          if(d===1&&m>1){prevDate=`${m-1}|${dim(m-1)}|${g}`;}
+          else if(d>1){prevDate=`${m}|${d-1}|${g}`;}
+          const prevEntries=prevDate?(scheduleData[prevDate]||[]):[];
+          const isNewTrip=!prevDate||!prevEntries.some(e=>e.type==='trip'&&e.text===tripEntry.text);
           if(isNewTrip){
-            stats[g].trips++;
-            stats[g].tripList.push({name:tripEntry.text,startM:m,startD:d,endM:m,endD:d,days:1});
+            stats[g].tripList.push({name:tripEntry.text,startM:m,startD:d,endM:m,endD:d,days:0});
           } else {
             const last=stats[g].tripList[stats[g].tripList.length-1];
-            if(last){last.endM=m;last.endD=d;last.days++;}
+            if(last){last.endM=m;last.endD=d;}
+          }
+          // Only count days within the selected range
+          if(m>=mStart&&m<=mEnd){
+            stats[g].days++;
           }
         }
       });
     }
   }
+  // Count trips that overlap with the range and calculate days within range
+  guides.forEach(g=>{
+    stats[g].tripList=stats[g].tripList.filter(t=>{
+      // Keep trips that overlap with mStart~mEnd
+      const startInRange=t.startM<=mEnd&&t.endM>=mStart;
+      return startInRange;
+    });
+    stats[g].trips=stats[g].tripList.length;
+  });
 
   const sorted=guides.slice().sort((a,b)=>stats[b].days-stats[a].days).filter(g=>stats[g].days>0);
 
@@ -1172,7 +1186,11 @@ window.renderTrips=function(){
 
   // Filter
   let filtered=trips.filter(t=>{
-    if(filterMonth>0&&t.startM!==filterMonth)return false;
+    if(filterMonth>0){
+      // 只要行程有任何一天在篩選月份內就顯示
+      const hasDay=t.days.some(d=>d.m===filterMonth);
+      if(!hasDay)return false;
+    }
     if(filterGuide&&!t.guideList.includes(filterGuide))return false;
     if(filterMissing==='missing'&&!t.hasMissing)return false;
     if(search&&!t.name.toLowerCase().includes(search))return false;
