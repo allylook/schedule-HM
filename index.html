@@ -498,8 +498,10 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
   <div class="help-section">
     <h5>團整體安排（自動套用所有領隊）</h5>
     <div class="help-row"><span class="help-cmd">塔曼山 行前 7/17 10:00</span><span class="help-desc">為「塔曼山」全體領隊填入行前</span></div>
+    <div class="help-row"><span class="help-cmd">秘魯-G2 行前 7/16 15:00</span><span class="help-desc">模糊匹配行程名稱也OK</span></div>
     <div class="help-row"><span class="help-cmd">塔曼山 交團 7/20 14:00 線上</span><span class="help-desc">為全體領隊填入交團（線上）</span></div>
     <div class="help-row"><span class="help-cmd">塔曼山 檢討 7/25 回看</span><span class="help-desc">為全體領隊填入檢討（回看）</span></div>
+    <div class="help-row"><span class="help-cmd">"秘魯印加-G2" 行前 7/16 15:00</span><span class="help-desc">引號精確指定行程名稱</span></div>
   </div>
   <div class="help-section">
     <h5>行程管理（管理員限定）</h5>
@@ -1016,6 +1018,55 @@ window.exportExcel=function(){
   toast('已匯出 CSV（可用 Excel 開啟）');
 };
 
+const TRIP_ALIAS = {
+  'TMB': 'TMB',
+  '半環': '半環TMB', '半環(3團)': '半環TMB',
+  '一般北義(2團)': '深度北義', '北義(2團)': '深度北義', '北義2團': '深度北義', '北義兩團': '深度北義', '深度北義(2團)': '深度北義',
+  '聯詠北義': '北義秘境',
+  '三大奇岩': '挪威三奇岩', '三大奇岩 G2': '挪威三奇岩',
+  '冰島北極': '北極冰島',
+  '冰島': '冰島環島',
+  '加拿大(2團)': '加拿大洛磯',
+  '印加古道': '秘魯印加', '秘魯': '秘魯印加',
+  'W Trek': '巴塔哥尼亞W Trek',
+  '南美': '南美三國',
+  '捷斯': '捷克斯洛伐克',
+  '瑞法': '阿爾卑斯三峰',
+  '表銀座': '槍岳表銀座',
+  '羅浮敦': '羅浮敦國王小徑', '羅浮敦(2團)': '羅浮敦國王小徑',
+  '保羅': '東歐雙國',
+  '西班牙': '朝聖之路', '西班牙朝聖': '朝聖之路',
+  '夏季奧入瀨': '奧入瀨初夏',
+  '非洲': '吉力馬札羅', '非洲山屋': '吉力馬札羅',
+  '塔斯': '塔斯馬尼亞',
+  '神山': '沙巴神山',
+  '米佛': '紐西蘭',
+  '熊野7天': '熊野7天', '熊野7天(包團)': '熊野7天', '熊野7天包團': '熊野7天', '熊野包團': '熊野7天',
+  '熊野6天': '熊野6天',
+  '中邊路': '熊野中邊', '踏破': '熊野中邊',
+  '白神山地': '白神', '白神': '白神',
+  '奧萬大': '奧萬大',
+  '上高地(包團)': '妻籠上高地', '上高地包團': '妻籠上高地',
+  '磐梯山(包團)': '磐梯安達太良',
+  '雪訓': '木曾駒雪訓',
+  '聯詠玉山G1': '聯詠玉山', '聯詠玉山G2': '聯詠玉山', '聯詠玉山g1': '聯詠玉山',
+  '越南': '越南巴貝',
+  '清邁(2團)': '泰北',
+  'EBC': 'EBC',
+};
+function meetMatchesTrip(meetText, tripName){
+  if(!meetText) return false;
+  if(meetText.includes(tripName)) return true;
+  for(const [old, newName] of Object.entries(TRIP_ALIAS)){
+    if(meetText.includes(old)&&(newName===tripName||tripName.includes(newName)||newName.includes(tripName.replace(/-G\d+$/,'')))){
+      return true;
+    }
+  }
+  const baseName=tripName.replace(/-G\d+$/,'');
+  if(baseName.length>=2&&meetText.includes(baseName)) return true;
+  return false;
+}
+
 window.renderTrips=function(){
   const filterMonth=parseInt(document.getElementById('tripsMonthFilter').value)||0;
   const filterGuide=document.getElementById('tripsGuideFilter').value||'';
@@ -1072,9 +1123,7 @@ window.renderTrips=function(){
             :dt<=firstDt&&(firstDt-dt)/864e5<=win;
           if(!inWindow)return false;
           // 說明文字必須包含行程名稱關鍵字
-          const tripWords=t.name.replace(/-G\d+$/,'').split(/[-\s]/);
-          const mainWord=tripWords.find(w=>w.length>=2)||t.name;
-          return m.text.includes(mainWord)||m.text.includes(t.name);
+          return meetMatchesTrip(m.text, t.name);
         }).forEach(m=>{
           if(!t.meetingData[mt].some(x=>x.m===m.m&&x.d===m.d&&x.text===m.text))
             t.meetingData[mt].push({...m,guide:g});
@@ -1358,7 +1407,7 @@ async function execCmd(raw){
     cmdLog(`✅ 已修改 ${gFound} ${m}/${d} [${typeKey}] → ${newText}`,'cmd-ok');return;
   }
 
-  // 團名 行前/交團/檢討 日期 時間 (e.g. 塔曼山 行前 7/17 10:00)
+  // 團名 行前/交團/檢討 日期 時間 (e.g. 塔曼山 行前 7/17 10:00 或 秘魯-G2 行前 7/16 15:00)
   const MEET_KW=['行前','交團','檢討'];
   const meetKw=MEET_KW.find(k=>cmd.includes(k));
   if(meetKw&&!cmd.startsWith('/')){
@@ -1368,17 +1417,31 @@ async function execCmd(raw){
     const mode=modeM?modeM[1]:'現場';
     const beforeKw=cmd.split(meetKw)[0].trim().replace(/["「」""]/g,'');
     const isGuide=findGuide(beforeKw);
-    const tripGs=!isGuide?getTripGuides(beforeKw):null;
-    if(!isGuide&&tripGs&&tripGs.length>0&&dm2){
-      const m=parseInt(dm2[1]),d=parseInt(dm2[2]);
-      const type=TYPES_MAP[meetKw];
-      const parts=[];
-      if(timeM&&mode!=='回看')parts.push(timeM[1]);
-      if(mode!=='現場')parts.push(`[${mode}]`);
-      const text=parts.join(' ')||meetKw;
-      for(const g of tripGs){const k=`${m}|${d}|${g}`;if(!scheduleData[k])scheduleData[k]=[];scheduleData[k].push({type,text});}
-      if(curMonth!==m)curMonth=m;await saveSchedule();
-      cmdLog(`✅ 「${beforeKw}」${meetKw} ${m}/${d} ${text||'（現場）'} → ${tripGs.join('、')}`,'cmd-ok');return;
+    if(!isGuide&&dm2){
+      // 嘗試精確匹配行程名
+      let tripGs=getTripGuides(beforeKw);
+      let matchedTripName=beforeKw;
+      // 若精確匹配失敗，嘗試模糊匹配
+      if(!tripGs.length){
+        const allTrips=new Set();
+        Object.values(scheduleData).forEach(items=>items.forEach(e=>{if(e.type==='trip')allTrips.add(e.text);}));
+        const keyword=normName(beforeKw);
+        const found=[...allTrips].find(t=>normName(t).includes(keyword)||keyword.includes(normName(t).replace(/-g\d+$/,'')));
+        if(found){tripGs=getTripGuides(found);matchedTripName=found;}
+      }
+      if(tripGs.length>0){
+        const m=parseInt(dm2[1]),d=parseInt(dm2[2]);
+        const type=TYPES_MAP[meetKw];
+        const parts=[];
+        if(timeM&&mode!=='回看')parts.push(timeM[1]);
+        if(mode!=='現場')parts.push(`[${mode}]`);
+        const text=parts.join(' ')||meetKw;
+        for(const g of tripGs){const k=`${m}|${d}|${g}`;if(!scheduleData[k])scheduleData[k]=[];scheduleData[k].push({type,text});}
+        if(curMonth!==m)curMonth=m;await saveSchedule();
+        cmdLog(`✅ 「${matchedTripName}」${meetKw} ${m}/${d} ${text||'（現場）'} → ${tripGs.join('、')}`,'cmd-ok');return;
+      } else {
+        cmdLog(`⚠️ 找不到行程「${beforeKw}」，請確認行程名稱或用引號包住`,'cmd-err');return;
+      }
     }
   }
 
@@ -1412,9 +1475,7 @@ async function execCmd(raw){
     const check=(typeStr,from,to)=>Object.entries(scheduleData).some(([k,es])=>{
       const[m,d,kg]=k.split('|');if(kg!==g)return false;
       const dt=new Date(2026,parseInt(m)-1,parseInt(d));
-      if(!(dt>=from&&dt<=to))return false;
-      // 說明文字必須包含行程名稱關鍵字
-      const tripWords=name.replace(/-G\d+$/,'').split(/[-\s]/);
+      return es.some(e=>e.type===typeStr&&meetMatchesTrip(e.text,name));
       const mainWord=tripWords.find(w=>w.length>=2)||name;
       return es.some(e=>e.type===typeStr&&(e.text.includes(mainWord)||e.text.includes(name)));
     });
