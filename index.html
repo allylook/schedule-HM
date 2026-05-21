@@ -148,20 +148,20 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #ddeeff;}
 .trips-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;}
 .trip-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);transition:box-shadow .15s;}
 .trip-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.1);}
+.trip-card.has-missing{background:#fff8f8;border-color:#f5a0a0;}
 .trip-card-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
 .trip-name{font-size:15px;font-weight:600;color:#1f5c9e;flex:1;}
 .trip-dates{font-size:12px;color:var(--text2);background:#e8edf5;padding:2px 10px;border-radius:999px;white-space:nowrap;}
 .trip-days{font-size:11px;color:var(--text3);margin-left:4px;}
-.trip-card-body{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .trip-info-row{font-size:12px;color:var(--text2);display:flex;gap:6px;align-items:flex-start;}
 .trip-info-label{font-weight:600;color:var(--text);white-space:nowrap;min-width:36px;}
 .trip-info-val{color:var(--text2);flex:1;}
 .trip-meet{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
-.meet-badge{font-size:11px;padding:2px 8px;border-radius:4px;display:flex;align-items:center;gap:3px;}
+.meet-badge{font-size:11px;padding:2px 8px;border-radius:4px;display:inline-flex;align-items:center;gap:3px;}
 .meet-badge.pre{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-border);}
 .meet-badge.hand{background:var(--peach-dim);color:var(--peach);border:1px solid var(--peach-border);}
 .meet-badge.review{background:var(--lime-dim);color:var(--lime);border:1px solid var(--lime-border);}
-.meet-badge.missing{background:#f5f5f5;color:#aaa;border:1px solid #ddd;}
+.meet-badge.missing{background:#fdecea;color:#a01515;border:1px solid #f5a0a0;font-weight:600;}
 .guide-chips-small{display:flex;flex-wrap:wrap;gap:4px;}
 .gchip-small{font-size:11px;padding:1px 8px;border-radius:999px;background:#e8edf5;color:var(--text2);border:1px solid var(--border);}
 .no-results{text-align:center;color:var(--text3);padding:40px;font-size:14px;}
@@ -408,8 +408,19 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
           <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
           <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
         </select>
-        <input type="text" id="tripsSearch" placeholder="搜尋行程名稱..." style="width:200px" oninput="renderTrips()"/>
-        <span id="tripsCount" style="font-size:12px;color:var(--text3);"></span>
+        <select id="tripsGuideFilter" onchange="renderTrips()">
+          <option value="">所有領隊</option>
+        </select>
+        <select id="tripsMissingFilter" onchange="renderTrips()">
+          <option value="">全部顯示</option>
+          <option value="missing">只顯示缺會議</option>
+        </select>
+        <select id="tripsSort" onchange="renderTrips()">
+          <option value="date">依出發日期</option>
+          <option value="name">依行程名稱</option>
+        </select>
+        <input type="text" id="tripsSearch" placeholder="搜尋行程名稱..." style="width:160px" oninput="renderTrips()"/>
+        <span id="tripsCount" style="font-size:12px;color:var(--text3);white-space:nowrap;"></span>
       </div>
       <div class="trips-list" id="tripsList"></div>
     </div>
@@ -1007,7 +1018,19 @@ window.exportExcel=function(){
 
 window.renderTrips=function(){
   const filterMonth=parseInt(document.getElementById('tripsMonthFilter').value)||0;
+  const filterGuide=document.getElementById('tripsGuideFilter').value||'';
+  const filterMissing=document.getElementById('tripsMissingFilter').value||'';
+  const sortBy=document.getElementById('tripsSort').value||'date';
   const search=(document.getElementById('tripsSearch').value||'').trim().toLowerCase();
+
+  // Update guide filter options
+  const guideFilter=document.getElementById('tripsGuideFilter');
+  const curGuide=guideFilter.value;
+  guideFilter.innerHTML='<option value="">所有領隊</option>';
+  guides.forEach(g=>{const o=document.createElement('option');o.value=g;o.textContent=g;guideFilter.appendChild(o);});
+  guideFilter.value=curGuide;
+
+  // Build trip map
   const tripMap={};
   const meetingsByGuide={};
   Object.entries(scheduleData).forEach(([k,entries])=>{
@@ -1016,7 +1039,7 @@ window.renderTrips=function(){
     entries.forEach(e=>{
       if(e.type==='trip'){
         if(!tripMap[e.text])tripMap[e.text]={name:e.text,days:[],guides:new Set()};
-        tripMap[e.text].days.push({m:mi,d:di});
+        tripMap[e.text].days.push({m:mi,d:di,g});
         tripMap[e.text].guides.add(g);
       }
       if(['pre','hand','review'].includes(e.type)){
@@ -1025,6 +1048,8 @@ window.renderTrips=function(){
       }
     });
   });
+
+  // Build trip objects with meetings
   const trips=Object.values(tripMap).map(t=>{
     t.days.sort((a,b)=>a.m*31+a.d-(b.m*31+b.d));
     const first=t.days[0],last=t.days[t.days.length-1];
@@ -1041,41 +1066,65 @@ window.renderTrips=function(){
         gm.filter(m=>{
           if(m.type!==mt)return false;
           const dt=new Date(2026,m.m-1,m.d);
-          if(mt==='review')return dt>=lastDt&&(dt-lastDt)/(864e5)<=win;
-          return dt<=firstDt&&(firstDt-dt)/(864e5)<=win;
+          if(mt==='review')return dt>=lastDt&&(dt-lastDt)/864e5<=win;
+          return dt<=firstDt&&(firstDt-dt)/864e5<=win;
         }).forEach(m=>{
           if(!t.meetingData[mt].some(x=>x.m===m.m&&x.d===m.d&&x.text===m.text))
             t.meetingData[mt].push({...m,guide:g});
         });
       });
     });
+    t.missingPre=t.meetingData.pre.length===0;
+    t.missingHand=t.meetingData.hand.length===0;
+    t.missingReview=t.meetingData.review.length===0;
+    t.hasMissing=t.missingPre||t.missingHand||t.missingReview;
     return t;
-  }).sort((a,b)=>a.startM*31+a.startD-(b.startM*31+b.startD));
-  const filtered=trips.filter(t=>{
+  });
+
+  // Filter
+  let filtered=trips.filter(t=>{
     if(filterMonth>0&&t.startM!==filterMonth)return false;
+    if(filterGuide&&!t.guideList.includes(filterGuide))return false;
+    if(filterMissing==='missing'&&!t.hasMissing)return false;
     if(search&&!t.name.toLowerCase().includes(search))return false;
     return true;
   });
+
+  // Sort
+  if(sortBy==='name') filtered.sort((a,b)=>a.name.localeCompare(b.name,'zh-TW'));
+  else filtered.sort((a,b)=>a.startM*31+a.startD-(b.startM*31+b.startD));
+
   document.getElementById('tripsCount').textContent=`共 ${filtered.length} 個行程`;
   const list=document.getElementById('tripsList');
   if(!filtered.length){list.innerHTML='<div class="no-results">沒有符合的行程</div>';return;}
+
   list.innerHTML=filtered.map(t=>{
     const guidesHtml=t.guideList.map(g=>`<span class="gchip-small">${g}</span>`).join('');
-    const meetHtml=['pre','hand','review'].map(mt=>{
+
+    const fmtMeetings=(mt)=>{
       const label={pre:'行前',hand:'交團',review:'檢討'}[mt];
       const items=t.meetingData[mt];
-      if(!items.length)return `<span class="meet-badge missing">－${label}</span>`;
-      return [...new Map(items.map(i=>[`${i.m}/${i.d}`,i])).values()].map(item=>{
+      if(!items.length) return `<span class="meet-badge missing">⚠️ 缺${label}</span>`;
+      // deduplicate by date+text
+      const unique=[...new Map(items.map(i=>[`${i.m}/${i.d}|${i.text}`,i])).values()];
+      return unique.map(item=>{
         const timeM=item.text.match(/(\d{1,2}:\d{2})/);
         const isOnline=item.text.includes('[線上]');
         const isRecord=item.text.includes('[回看]');
-        const mode=isRecord?'回看':isOnline?'線上':'';
-        return `<span class="meet-badge ${mt}">${label} ${timeM?timeM[1]:''}${mode?` [${mode}]`:''}`.trim()+'</span>';
+        const mode=isRecord?'[回看]':isOnline?'[線上]':'';
+        const timeStr=timeM?timeM[1]:'';
+        const clean=item.text.replace(/\[(線上|回看)\]/g,'').trim();
+        const display=[`${item.m}/${item.d}`,timeStr,clean!==timeStr?clean:'',mode].filter(Boolean).join(' ');
+        return `<span class="meet-badge ${mt}" title="${item.guide}">${label} ${display}</span>`;
       }).join('');
-    }).join('');
-    return `<div class="trip-card">
+    };
+
+    const meetHtml=['pre','hand','review'].map(fmtMeetings).join('');
+    const missingClass=t.hasMissing?'has-missing':'';
+
+    return `<div class="trip-card ${missingClass}">
       <div class="trip-card-header">
-        <div class="trip-name">${t.name}</div>
+        <div class="trip-name">${t.name}${t.hasMissing?'  <span style="font-size:11px;color:#a01515;font-weight:400;">⚠️ 缺會議</span>':''}</div>
         <div class="trip-dates">${t.startM}/${t.startD} ~ ${t.endM}/${t.endD}</div>
         <div class="trip-days">${t.totalDays}天</div>
       </div>
