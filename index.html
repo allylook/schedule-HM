@@ -1066,8 +1066,15 @@ window.renderTrips=function(){
         gm.filter(m=>{
           if(m.type!==mt)return false;
           const dt=new Date(2026,m.m-1,m.d);
-          if(mt==='review')return dt>=lastDt&&(dt-lastDt)/864e5<=win;
-          return dt<=firstDt&&(firstDt-dt)/864e5<=win;
+          // 時間窗口
+          const inWindow=mt==='review'
+            ?dt>=lastDt&&(dt-lastDt)/864e5<=win
+            :dt<=firstDt&&(firstDt-dt)/864e5<=win;
+          if(!inWindow)return false;
+          // 說明文字必須包含行程名稱關鍵字
+          const tripWords=t.name.replace(/-G\d+$/,'').split(/[-\s]/);
+          const mainWord=tripWords.find(w=>w.length>=2)||t.name;
+          return m.text.includes(mainWord)||m.text.includes(t.name);
         }).forEach(m=>{
           if(!t.meetingData[mt].some(x=>x.m===m.m&&x.d===m.d&&x.text===m.text))
             t.meetingData[mt].push({...m,guide:g});
