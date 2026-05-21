@@ -316,7 +316,7 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
               <input type="text" id="schSearch" placeholder="🔍 搜尋班表（跨月）..." autocomplete="off"
                 style="font-size:12px;padding:5px 10px 5px 10px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text);font-family:inherit;width:200px;outline:none;"
                 oninput="searchSchedule(this.value)"/>
-              <div id="searchResults" style="display:none;position:absolute;top:100%;left:0;width:360px;max-height:320px;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:200;margin-top:4px;"></div>
+              <div id="searchResults" style="display:none;position:fixed;width:380px;max-height:360px;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:500;"></div>
             </div>
             <button id="schSearchClear" onclick="clearSearch()" style="display:none;padding:4px 10px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text2);cursor:pointer;">✕</button>
           </div>
@@ -1294,6 +1294,13 @@ window.searchSchedule = function(q) {
   }
 
   const area = document.getElementById('searchResults');
+  // Position below search input
+  const inp = document.getElementById('schSearch');
+  const rect = inp.getBoundingClientRect();
+  area.style.top = (rect.bottom + 4) + 'px';
+  area.style.left = rect.left + 'px';
+  area.style.display = 'block';
+
   if(!results.length){
     area.innerHTML=`<div style="padding:12px;color:var(--text2);font-size:13px;">找不到「${q}」</div>`;
     return;
