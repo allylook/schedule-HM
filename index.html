@@ -1409,11 +1409,15 @@ async function execCmd(raw){
       const preStart=new Date(first);preStart.setDate(preStart.getDate()-60);
       const handStart=new Date(first);handStart.setDate(handStart.getDate()-30);
       const revEnd=new Date(last);revEnd.setDate(revEnd.getDate()+30);
-      const check=(typeStr,from,to)=>Object.entries(scheduleData).some(([k,es])=>{
-        const[m,d,kg]=k.split('|');if(kg!==g)return false;
-        const dt=new Date(2026,parseInt(m)-1,parseInt(d));
-        return dt>=from&&dt<=to&&es.some(e=>e.type===typeStr);
-      });
+    const check=(typeStr,from,to)=>Object.entries(scheduleData).some(([k,es])=>{
+      const[m,d,kg]=k.split('|');if(kg!==g)return false;
+      const dt=new Date(2026,parseInt(m)-1,parseInt(d));
+      if(!(dt>=from&&dt<=to))return false;
+      // 說明文字必須包含行程名稱關鍵字
+      const tripWords=name.replace(/-G\d+$/,'').split(/[-\s]/);
+      const mainWord=tripWords.find(w=>w.length>=2)||name;
+      return es.some(e=>e.type===typeStr&&(e.text.includes(mainWord)||e.text.includes(name)));
+    });
       const missing=[];
       if(!check('pre',preStart,first))missing.push('行前（出發前60天）');
       if(!check('hand',handStart,first))missing.push('交團（出發前30天）');
