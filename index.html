@@ -328,7 +328,12 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
       <div class="schedule-main">
         <div class="sch-toolbar">
           <h3 id="mTitle"></h3>
-          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+          <div style="display:flex;align-items:center;gap:4px;margin-right:4px;">
+            <button id="undoBtn" onclick="undo()" disabled title="還原 (Ctrl+Z)"
+              style="padding:5px 10px;font-size:13px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text2);cursor:pointer;transition:all .15s;">↩️</button>
+            <button id="redoBtn" onclick="redo()" disabled title="重做 (Ctrl+Y)"
+              style="padding:5px 10px;font-size:13px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text2);cursor:pointer;transition:all .15s;">↪️</button>
+          </div>
             <div style="position:relative;">
               <input type="text" id="schSearch" placeholder="🔍 搜尋班表（跨月）..." autocomplete="off"
                 style="font-size:12px;padding:5px 10px 5px 10px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text);font-family:inherit;width:200px;outline:none;"
@@ -1933,28 +1938,54 @@ async function execCmd(raw){
 
 // ── 還原功能 ──
 const undoStack = [];
+const redoStack = [];
 const MAX_UNDO = 20;
 
 function saveSnapshot(){
   undoStack.push(JSON.stringify(scheduleData));
   if(undoStack.length > MAX_UNDO) undoStack.shift();
+  redoStack.length = 0; // 新操作後清除重做堆疊
+  updateUndoButtons();
+}
+
+function updateUndoButtons(){
+  const undoBtn = document.getElementById('undoBtn');
+  const redoBtn = document.getElementById('redoBtn');
+  if(undoBtn) undoBtn.disabled = undoStack.length === 0;
+  if(redoBtn) redoBtn.disabled = redoStack.length === 0;
 }
 
 async function undo(){
   if(!undoStack.length){toast('沒有可還原的操作');return;}
-  const prev = undoStack.pop();
-  scheduleData = JSON.parse(prev);
+  redoStack.push(JSON.stringify(scheduleData));
+  scheduleData = JSON.parse(undoStack.pop());
   await saveSchedule();
-  toast('↩️ 已還原上一步');
+  updateUndoButtons();
+  toast('↩️ 已還原');
   cmdLog('↩️ 已還原上一步','cmd-ok');
 }
 
+async function redo(){
+  if(!redoStack.length){toast('沒有可重做的操作');return;}
+  undoStack.push(JSON.stringify(scheduleData));
+  scheduleData = JSON.parse(redoStack.pop());
+  await saveSchedule();
+  updateUndoButtons();
+  toast('↪️ 已重做');
+  cmdLog('↪️ 已重做','cmd-ok');
+}
+
 document.addEventListener('keydown', e=>{
-  if((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey){
+  if((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key==='z'){
     const active = document.activeElement;
     if(active.tagName!=='INPUT' && active.tagName!=='TEXTAREA'){
-      e.preventDefault();
-      undo();
+      e.preventDefault(); undo();
+    }
+  }
+  if((e.ctrlKey||e.metaKey) && (e.shiftKey && e.key==='z' || e.key==='y')){
+    const active = document.activeElement;
+    if(active.tagName!=='INPUT' && active.tagName!=='TEXTAREA'){
+      e.preventDefault(); redo();
     }
   }
 });
