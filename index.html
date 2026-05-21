@@ -1237,8 +1237,11 @@ async function execCmd(raw){
   function findAllGuides(s){ return s.split(/\s+/).map(w=>findGuide(w)).filter(Boolean).filter((g,i,a)=>a.indexOf(g)===i); }
   function getTripGuides(tripName){
     const gs=new Set();
+    const keyword=normName(tripName);
     Object.entries(scheduleData).forEach(([k,entries])=>{
-      if(entries.some(e=>e.type==='trip'&&e.text===tripName)){const[,,g]=k.split('|');gs.add(g);}
+      if(entries.some(e=>e.type==='trip'&&normName(e.text).includes(keyword))){
+        const[,,g]=k.split('|');gs.add(g);
+      }
     });
     return [...gs];
   }
