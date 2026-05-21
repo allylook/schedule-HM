@@ -310,6 +310,15 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
       <div class="schedule-main">
         <div class="sch-toolbar">
           <h3 id="mTitle"></h3>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+            <div style="position:relative;">
+              <input type="text" id="schSearch" placeholder="🔍 搜尋班表..." autocomplete="off"
+                style="font-size:12px;padding:5px 10px 5px 28px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text);font-family:inherit;width:180px;outline:none;"
+                oninput="searchSchedule(this.value)"/>
+              <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3);">🔍</span>
+            </div>
+            <button id="schSearchClear" onclick="clearSearch()" style="display:none;padding:4px 10px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text2);cursor:pointer;">✕ 清除</button>
+          </div>
           <div class="legend">
             <div class="leg"><div class="lb" style="background:var(--green)"></div>行程</div>
             <div class="leg"><div class="lb" style="background:var(--blue)"></div>提早去</div>
@@ -467,6 +476,18 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
     <div class="pop-btns">
       <button id="pCancel">取消</button>
       <button class="confirm" id="pConfirm">確認</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Popup -->
+<div id="editOv" class="ov" style="display:none">
+  <div class="pop" style="min-width:280px;">
+    <h4 id="editTitle">編輯</h4>
+    <input type="text" id="editInput" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--radius);border:1.5px solid #1f5c9e;font-family:inherit;margin-bottom:12px;"/>
+    <div class="pop-btns">
+      <button id="editCancel">取消</button>
+      <button class="confirm" id="editConfirm">確認</button>
     </div>
   </div>
 </div>
@@ -745,8 +766,14 @@ function renderTable(){
         const tag=document.createElement('div');tag.className='tag '+TYPES[e.type].cls;
         const lbl=e.text||TYPES[e.type].label;
         const canDel=canEdit(g);
-        tag.innerHTML=`<span class="tag-lbl" title="${lbl}">${lbl}</span>`+(canDel?`<span class="tag-x" data-m="${m}" data-d="${d}" data-g="${g}" data-i="${i}">×</span>`:'');
-        if(canDel) tag.querySelector('.tag-x').onclick=ev=>{ev.stopPropagation();removeEntry(m,d,g,i);};
+        tag.innerHTML=`<span class="tag-lbl chip" title="${lbl}">${lbl}</span>`+(canDel?`<span class="tag-x" data-m="${m}" data-d="${d}" data-g="${g}" data-i="${i}">×</span>`:'');
+        if(canDel){
+          tag.querySelector('.tag-x').onclick=ev=>{ev.stopPropagation();removeEntry(m,d,g,i);};
+          // 雙擊編輯
+          tag.querySelector('.tag-lbl').ondblclick=ev=>{ev.stopPropagation();openEditPop(m,d,g,i);};
+          // 右鍵選單
+          tag.querySelector('.tag-lbl').oncontextmenu=ev=>showCtxMenu(ev,m,d,g,i);
+        }
         cell.appendChild(tag);
       });
       if(canEdit(g)){
@@ -1240,8 +1267,153 @@ window.renderTrips=function(){
 };
 
 
-// ── Command Bar ──
-const TYPES_MAP = {'行程':'trip','提早去':'early','延回':'late','請假':'leave','行前':'pre','交團':'hand','檢討':'review'};
+// ── 搜尋功能 ──
+let searchHighlights = [];
+window.searchSchedule = function(q) {
+  // Clear previous highlights
+  document.querySelectorAll('.search-hl').forEach(el => {
+    el.classList.remove('search-hl');
+    el.style.outline = '';
+  });
+  searchHighlights = [];
+  document.getElementById('schSearchClear').style.display = q ? 'inline-block' : 'none';
+  if (!q || q.length < 1) return;
+  const keyword = q.toLowerCase();
+  document.querySelectorAll('#tbody td .chip').forEach(chip => {
+    const text = chip.textContent.toLowerCase();
+    if (text.includes(keyword)) {
+      chip.classList.add('search-hl');
+      chip.style.outline = '2px solid #f5a623';
+      chip.style.outlineOffset = '1px';
+      searchHighlights.push(chip);
+    }
+  });
+  // Scroll to first result
+  if (searchHighlights.length > 0) {
+    searchHighlights[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+    cmdLog(`🔍 找到 ${searchHighlights.length} 筆「${q}」`, 'cmd-info');
+  } else {
+    cmdLog(`🔍 找不到「${q}」`, 'cmd-err');
+  }
+};
+
+window.clearSearch = function() {
+  document.getElementById('schSearch').value = '';
+  document.querySelectorAll('.search-hl').forEach(el => {
+    el.classList.remove('search-hl');
+    el.style.outline = '';
+  });
+  searchHighlights = [];
+  document.getElementById('schSearchClear').style.display = 'none';
+};
+
+// ── 複製貼上 ──
+let clipboard = null; // {type, text}
+
+// ── 編輯功能 ──
+let editState = null;
+document.getElementById('editConfirm').onclick = async () => {
+  if (!editState) return;
+  const { m, d, g, idx } = editState;
+  const newText = document.getElementById('editInput').value.trim();
+  const k = `${m}|${d}|${g}`;
+  if (scheduleData[k] && scheduleData[k][idx] !== undefined) {
+    scheduleData[k][idx].text = newText;
+    await saveSchedule();
+    document.getElementById('editOv').style.display = 'none';
+    toast('已更新');
+  }
+};
+document.getElementById('editCancel').onclick = () => {
+  document.getElementById('editOv').style.display = 'none';
+};
+
+function openEditPop(m, d, g, idx) {
+  const k = `${m}|${d}|${g}`;
+  const entry = (scheduleData[k] || [])[idx];
+  if (!entry) return;
+  editState = { m, d, g, idx };
+  document.getElementById('editTitle').textContent = `編輯 ${g} ${m}/${d}`;
+  document.getElementById('editInput').value = entry.text || '';
+  document.getElementById('editOv').style.display = 'flex';
+  setTimeout(() => {
+    const inp = document.getElementById('editInput');
+    inp.focus(); inp.select();
+  }, 50);
+}
+
+// Right-click context menu for copy/paste
+let contextState = null;
+const ctxMenu = document.createElement('div');
+ctxMenu.id = 'ctxMenu';
+ctxMenu.style.cssText = 'display:none;position:fixed;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:999;min-width:140px;padding:4px 0;font-size:13px;';
+document.body.appendChild(ctxMenu);
+
+document.addEventListener('click', () => ctxMenu.style.display = 'none');
+
+function showCtxMenu(e, m, d, g, idx) {
+  e.preventDefault();
+  e.stopPropagation();
+  contextState = { m, d, g, idx };
+  const k = `${m}|${d}|${g}`;
+  const entry = (scheduleData[k] || [])[idx];
+  ctxMenu.innerHTML = `
+    <div class="ctx-item" onclick="ctxCopy()">📋 複製</div>
+    ${clipboard ? `<div class="ctx-item" onclick="ctxPaste()">📌 貼上（${clipboard.text?.slice(0,10)}...）</div>` : ''}
+    <div class="ctx-item" onclick="ctxEdit()">✏️ 編輯</div>
+    <hr style="margin:4px 0;border:none;border-top:1px solid #eee;">
+    <div class="ctx-item" style="color:var(--red)" onclick="ctxDelete()">🗑️ 刪除</div>
+  `;
+  ctxMenu.style.display = 'block';
+  ctxMenu.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
+  ctxMenu.style.top = Math.min(e.clientY, window.innerHeight - 150) + 'px';
+}
+
+// Add ctx-item styles
+const ctxStyle = document.createElement('style');
+ctxStyle.textContent = '.ctx-item{padding:7px 16px;cursor:pointer;color:var(--text);}.ctx-item:hover{background:#f0f5ff;}';
+document.head.appendChild(ctxStyle);
+
+window.ctxCopy = function() {
+  if (!contextState) return;
+  const { m, d, g, idx } = contextState;
+  const entry = (scheduleData[`${m}|${d}|${g}`] || [])[idx];
+  if (entry) { clipboard = { ...entry }; toast('已複製：' + entry.text); }
+  ctxMenu.style.display = 'none';
+};
+
+window.ctxPaste = async function() {
+  if (!contextState || !clipboard) return;
+  const { m, d, g } = contextState;
+  const k = `${m}|${d}|${g}`;
+  if (!scheduleData[k]) scheduleData[k] = [];
+  if (!scheduleData[k].some(e => e.type === clipboard.type && e.text === clipboard.text)) {
+    scheduleData[k].push({ ...clipboard });
+    await saveSchedule();
+    toast('已貼上：' + clipboard.text);
+  }
+  ctxMenu.style.display = 'none';
+};
+
+window.ctxEdit = function() {
+  if (!contextState) return;
+  const { m, d, g, idx } = contextState;
+  openEditPop(m, d, g, idx);
+  ctxMenu.style.display = 'none';
+};
+
+window.ctxDelete = async function() {
+  if (!contextState) return;
+  const { m, d, g, idx } = contextState;
+  const k = `${m}|${d}|${g}`;
+  if (scheduleData[k]) {
+    scheduleData[k].splice(idx, 1);
+    if (!scheduleData[k].length) delete scheduleData[k];
+    await saveSchedule();
+    toast('已刪除');
+  }
+  ctxMenu.style.display = 'none';
+}; = {'行程':'trip','提早去':'early','延回':'late','請假':'leave','行前':'pre','交團':'hand','檢討':'review'};
 const SINGLE_TYPES = ['trip','early','late','leave'];
 
 function cmdLog(msg, cls=''){
