@@ -966,7 +966,11 @@ window.queryFree=function(){
   let cur=new Date(startDt);
   while(cur<=endDt){
     const m=cur.getMonth()+1,d=cur.getDate();
-    guides.forEach(g=>{if((scheduleData[`${m}|${d}|${g}`]||[]).length>0)busyG.add(g);});
+    // 只有有行程（trip/early/late/leave）才算有事，行前/交團/檢討不算
+    guides.forEach(g=>{
+      const entries=scheduleData[`${m}|${d}|${g}`]||[];
+      if(entries.some(e=>['trip','early','late','leave'].includes(e.type))) busyG.add(g);
+    });
     cur.setDate(cur.getDate()+1);
   }
   const free=guides.filter(g=>!busyG.has(g));
@@ -1000,18 +1004,18 @@ window.queryTrip=function(){
   const rows=Object.values(tripGuideMap).map(({tripName,guide,days})=>{
     days.sort((a,b)=>a-b);
     const first=days[0],last=days[days.length-1];
-    const preWin=new Date(first); preWin.setDate(preWin.getDate()-60);
-    const handWin=new Date(first); handWin.setDate(handWin.getDate()-30);
-    const revWin=new Date(last); revWin.setDate(revWin.getDate()+30);
+    // Find meetings for each guide using meetMatchesTrip - no time restriction
     const meetings={pre:[],hand:[],review:[]};
     Object.entries(scheduleData).forEach(([k,entries])=>{
       const[m,d,g2]=k.split('|');
       if(g2!==guide) return;
-      const dt=new Date(2026,parseInt(m)-1,parseInt(d));
       entries.forEach(e=>{
-        if(e.type==='pre'&&dt>=preWin&&dt<=first) meetings.pre.push({m:parseInt(m),d:parseInt(d),text:e.text});
-        if(e.type==='hand'&&dt>=handWin&&dt<=first) meetings.hand.push({m:parseInt(m),d:parseInt(d),text:e.text});
-        if(e.type==='review'&&dt>=last&&dt<=revWin) meetings.review.push({m:parseInt(m),d:parseInt(d),text:e.text});
+        if(e.type==='pre'&&meetMatchesTrip(e.text,tripName))
+          meetings.pre.push({m:parseInt(m),d:parseInt(d),text:e.text});
+        if(e.type==='hand'&&meetMatchesTrip(e.text,tripName))
+          meetings.hand.push({m:parseInt(m),d:parseInt(d),text:e.text});
+        if(e.type==='review'&&meetMatchesTrip(e.text,tripName))
+          meetings.review.push({m:parseInt(m),d:parseInt(d),text:e.text});
       });
     });
     const fmtMeet=(items)=>items.length?items.map(i=>`${i.m}/${i.d} ${i.text}`).join('<br>'):'<span style="color:#ccc">－</span>';
@@ -1806,22 +1810,27 @@ async function execCmd(raw){
     return;
   }
 
-  // /空檔
   if(/^\/空檔/.test(cmd)){
     const rM=cmd.match(/(\d{1,2})[\/月](\d{1,2})[~～](\d{1,2})[\/月](\d{1,2})/);
     const sM=cmd.match(/(\d{1,2})[\/月](\d{1,2})/);
+    const BUSY_TYPES=['trip','early','late','leave'];
     if(rM){
       const sm=parseInt(rM[1]),sd=parseInt(rM[2]),em=parseInt(rM[3]),ed=parseInt(rM[4]);
       const busyG=new Set();
       let cur=new Date(2026,sm-1,sd);const edt=new Date(2026,em-1,ed);
-      while(cur<=edt){const m=cur.getMonth()+1,d=cur.getDate();guides.forEach(g=>{if((scheduleData[`${m}|${d}|${g}`]||[]).length>0)busyG.add(g);});cur.setDate(cur.getDate()+1);}
+      while(cur<=edt){
+        const m=cur.getMonth()+1,d=cur.getDate();
+        guides.forEach(g=>{if((scheduleData[`${m}|${d}|${g}`]||[]).some(e=>BUSY_TYPES.includes(e.type)))busyG.add(g);});
+        cur.setDate(cur.getDate()+1);
+      }
       const free=guides.filter(g=>!busyG.has(g));
       cmdLog(`📅 ${sm}/${sd}~${em}/${ed} 全程有空(${free.length})：${free.join('、')||'無'}`,'cmd-info');
       cmdLog(`📅 有行程(${busyG.size})：${[...busyG].join('、')||'無'}`,'cmd-info');
     }else if(sM){
       const mi=parseInt(sM[1]),di=parseInt(sM[2]);
-      const busy=guides.filter(g=>(scheduleData[`${mi}|${di}|${g}`]||[]).length>0);
-      cmdLog(`📅 ${mi}/${di} 有空(${guides.length-busy.length})：${guides.filter(g=>!busy.includes(g)).join('、')||'無'}`,'cmd-info');
+      const busy=guides.filter(g=>(scheduleData[`${mi}|${di}|${g}`]||[]).some(e=>BUSY_TYPES.includes(e.type)));
+      const free=guides.filter(g=>!busy.includes(g));
+      cmdLog(`📅 ${mi}/${di} 有空(${free.length})：${free.join('、')||'無'}`,'cmd-info');
       cmdLog(`📅 有行程(${busy.length})：${busy.join('、')||'無'}`,'cmd-info');
     }else cmdLog('⚠️ 請包含日期','cmd-err');
     return;
