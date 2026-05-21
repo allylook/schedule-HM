@@ -985,63 +985,65 @@ window.queryTrip=function(){
   const name=document.getElementById('qTripName').value.trim();
   if(!name) return;
   document.getElementById('queryTitle').textContent=`搜尋「${name}」— 符合的行程`;
-  // Group by exact trip name + guide
-  const tripGuideMap={};
+
+  // Group by exact trip name only (merge all guides)
+  const tripMap={};
   Object.entries(scheduleData).forEach(([k,entries])=>{
     const[m,d,g]=k.split('|');
     entries.forEach(e=>{
       if(e.type==='trip'&&e.text.toLowerCase().includes(name.toLowerCase())){
-        const key=`${e.text}|||${g}`;
-        if(!tripGuideMap[key]) tripGuideMap[key]={tripName:e.text,guide:g,days:[]};
-        tripGuideMap[key].days.push(new Date(2026,parseInt(m)-1,parseInt(d)));
+        if(!tripMap[e.text]) tripMap[e.text]={tripName:e.text,guides:[],days:[]};
+        if(!tripMap[e.text].guides.includes(g)) tripMap[e.text].guides.push(g);
+        tripMap[e.text].days.push(new Date(2026,parseInt(m)-1,parseInt(d)));
       }
     });
   });
-  const area=document.getElementById('resultArea');
-  if(!Object.keys(tripGuideMap).length){area.innerHTML='<div style="color:var(--text2);padding:20px">找不到符合的行程</div>';return;}
 
-  // For each trip+guide, find meetings within window
-  const rows=Object.values(tripGuideMap).map(({tripName,guide,days})=>{
-    days.sort((a,b)=>a-b);
-    const first=days[0],last=days[days.length-1];
-    // Find meetings for each guide using meetMatchesTrip - no time restriction
+  const area=document.getElementById('resultArea');
+  if(!Object.keys(tripMap).length){area.innerHTML='<div style="color:var(--text2);padding:20px">找不到符合的行程</div>';return;}
+
+  const rows=Object.values(tripMap).map(t=>{
+    t.days.sort((a,b)=>a-b);
+    const first=t.days[0],last=t.days[t.days.length-1];
+    const startStr=`${first.getMonth()+1}/${first.getDate()}`;
+    const endStr=`${last.getMonth()+1}/${last.getDate()}`;
+    const totalDays=[...new Set(t.days.map(d=>`${d.getMonth()+1}/${d.getDate()}`))].length;
+    // Use first guide to find meetings (same for all guides)
+    const g=t.guides[0];
     const meetings={pre:[],hand:[],review:[]};
-    Object.entries(scheduleData).forEach(([k,entries])=>{
-      const[m,d,g2]=k.split('|');
-      if(g2!==guide) return;
-      entries.forEach(e=>{
-        if(e.type==='pre'&&meetMatchesTrip(e.text,tripName))
-          meetings.pre.push({m:parseInt(m),d:parseInt(d),text:e.text});
-        if(e.type==='hand'&&meetMatchesTrip(e.text,tripName))
-          meetings.hand.push({m:parseInt(m),d:parseInt(d),text:e.text});
-        if(e.type==='review'&&meetMatchesTrip(e.text,tripName))
-          meetings.review.push({m:parseInt(m),d:parseInt(d),text:e.text});
+    if(g){
+      Object.entries(scheduleData).forEach(([k,entries])=>{
+        const[m,d,g2]=k.split('|');
+        if(g2!==g) return;
+        entries.forEach(e=>{
+          if(e.type==='pre'&&meetMatchesTrip(e.text,t.tripName))
+            meetings.pre.push(`${parseInt(m)}/${parseInt(d)} ${e.text}`);
+          if(e.type==='hand'&&meetMatchesTrip(e.text,t.tripName))
+            meetings.hand.push(`${parseInt(m)}/${parseInt(d)} ${e.text}`);
+          if(e.type==='review'&&meetMatchesTrip(e.text,t.tripName))
+            meetings.review.push(`${parseInt(m)}/${parseInt(d)} ${e.text}`);
+        });
       });
-    });
-    const fmtMeet=(items)=>items.length?items.map(i=>`${i.m}/${i.d} ${i.text}`).join('<br>'):'<span style="color:#ccc">－</span>';
-    return {tripName,guide,
-      start:`${first.getMonth()+1}/${first.getDate()}`,
-      end:`${last.getMonth()+1}/${last.getDate()}`,
-      days:days.length,
-      pre:fmtMeet(meetings.pre),
-      hand:fmtMeet(meetings.hand),
-      review:fmtMeet(meetings.review)
-    };
-  }).sort((a,b)=>a.tripName!==b.tripName?a.tripName.localeCompare(b.tripName):a.start.localeCompare(b.start));
+    }
+    const fmtM=items=>items.length?[...new Set(items)].join('<br>'):'<span style="color:#ccc">－</span>';
+    return {tripName:t.tripName,guides:t.guides.join('、'),startStr,endStr,totalDays,
+      pre:fmtM(meetings.pre),hand:fmtM(meetings.hand),review:fmtM(meetings.review)};
+  }).sort((a,b)=>a.tripName!==b.tripName?a.tripName.localeCompare(b.tripName,'zh-TW'):a.startStr.localeCompare(b.startStr));
 
   area.innerHTML=`<table class="result-table">
     <thead><tr><th>行程名稱</th><th>領隊</th><th>出發</th><th>結束</th><th>天數</th><th>行前</th><th>交團</th><th>檢討</th></tr></thead>
     <tbody>${rows.map(r=>`<tr>
       <td><strong>${r.tripName}</strong></td>
-      <td>${r.guide}</td>
-      <td>${r.start}</td>
-      <td>${r.end}</td>
-      <td>${r.days}天</td>
+      <td>${r.guides}</td>
+      <td>${r.startStr}</td>
+      <td>${r.endStr}</td>
+      <td>${r.totalDays}天</td>
       <td style="font-size:11px">${r.pre}</td>
       <td style="font-size:11px">${r.hand}</td>
       <td style="font-size:11px">${r.review}</td>
     </tr>`).join('')}</tbody></table>`;
 };
+
 
 window.queryStat=function(){
   const mStart=parseInt(document.getElementById('statMonthStart2').value);
