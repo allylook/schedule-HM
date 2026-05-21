@@ -962,23 +962,53 @@ window.queryFree=function(){
   const startDt=new Date(sy,sm-1,sd), endDt=new Date(ey,em-1,ed);
   const isSingle=startVal===endVal;
   document.getElementById('queryTitle').textContent=isSingle?`${sm}/${sd} — 有空的領隊`:`${sm}/${sd}～${em}/${ed} — 全程有空的領隊`;
+
+  // Collect all entries per guide in date range
+  const guideEntries={};
+  guides.forEach(g=>{guideEntries[g]=[];});
+  const BUSY_TYPES=['trip','early','late','leave'];
   const busyG=new Set();
   let cur=new Date(startDt);
   while(cur<=endDt){
     const m=cur.getMonth()+1,d=cur.getDate();
-    // 只有有行程（trip/early/late/leave）才算有事，行前/交團/檢討不算
     guides.forEach(g=>{
       const entries=scheduleData[`${m}|${d}|${g}`]||[];
-      if(entries.some(e=>['trip','early','late','leave'].includes(e.type))) busyG.add(g);
+      if(entries.some(e=>BUSY_TYPES.includes(e.type))) busyG.add(g);
+      entries.forEach(e=>{
+        guideEntries[g].push({m,d,type:e.type,text:e.text||TYPES[e.type].label});
+      });
     });
     cur.setDate(cur.getDate()+1);
   }
-  const free=guides.filter(g=>!busyG.has(g));
-  const busy=[...busyG];
-  document.getElementById('resultArea').innerHTML=`<div class="free-grid">
-    <div><h5 style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">✅ 有空（${free.length}人）</h5>${free.map(g=>`<span class="free-chip free">${g}</span>`).join('')||'<span style="color:var(--text3)">無</span>'}</div>
-    <div><h5 style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">🔴 有行程（${busy.length}人）</h5>${busy.map(g=>`<span class="free-chip busy">${g}</span>`).join('')||'<span style="color:var(--text3)">無</span>'}</div>
-  </div>`;
+
+  const free=guides.filter(g=>!busyG.has(g) && g!=='大會議室' && g!=='小會議室');
+  const busy=[...busyG].filter(g=>g!=='大會議室'&&g!=='小會議室');
+
+  function makeChips(list, colorClass){
+    return list.map(g=>{
+      const hasEntries=guideEntries[g].length>0;
+      return `<span class="free-chip ${colorClass}" style="cursor:${hasEntries?'pointer':'default'};${hasEntries?'text-decoration:underline dotted;':''}"
+        onclick="toggleGuideDetail('${g}','${colorClass}')">${g}${hasEntries?` <span style="font-size:10px;opacity:.7">(${guideEntries[g].length})</span>`:''}</span>
+        <div id="detail-${g}" style="display:none;width:100%;background:#f8faff;border-radius:6px;padding:8px 12px;margin:4px 0 8px;font-size:11px;color:var(--text2);">
+          ${guideEntries[g].map(e=>`<div>${e.m}/${e.d} [${TYPES[e.type].label}] ${e.text}</div>`).join('')||'（本段時間無任何記錄）'}
+        </div>`;
+    }).join('');
+  }
+
+  document.getElementById('resultArea').innerHTML=`
+    <div style="margin-bottom:16px;">
+      <h5 style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">✅ 有空（${free.length}人）<span style="font-weight:400;font-size:10px;">— 點擊查看詳情</span></h5>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start;">${makeChips(free,'free')}</div>
+    </div>
+    <div>
+      <h5 style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">🔴 有行程（${busy.length}人）<span style="font-weight:400;font-size:10px;">— 點擊查看詳情</span></h5>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start;">${makeChips(busy,'busy')}</div>
+    </div>`;
+};
+
+window.toggleGuideDetail=function(g, cls){
+  const el=document.getElementById(`detail-${g}`);
+  if(el) el.style.display=el.style.display==='none'?'block':'none';
 };
 
 window.queryTrip=function(){
