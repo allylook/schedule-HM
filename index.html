@@ -818,6 +818,7 @@ function renderTable(){
 
 // ── Guide CRUD ──
 async function removeGuide(g){
+  if(!confirm(`確定要從名單移除「${g}」嗎？\n（不會刪除班表資料，只移除欄位）`)) return;
   guides=guides.filter(x=>x!==g);
   await saveGuides();
   toast(`已移除「${g}」`);
@@ -836,7 +837,7 @@ async function removeEntry(m,d,g,i){
   const k=`${m}|${d}|${g}`;
   const arr=(scheduleData[k]||[]).slice();arr.splice(i,1);
   if(arr.length===0)delete scheduleData[k]; else scheduleData[k]=arr;
-  await saveSchedule();
+  saveSnapshot(); await saveSchedule();
 }
 
 function openPop(m,d,g){
@@ -898,7 +899,7 @@ document.getElementById('pConfirm').onclick=async()=>{
   arr.push({type,text:text||TYPES[type].label});
   scheduleData[k]=arr;
   document.getElementById('ov').style.display='none';
-  await saveSchedule();
+  saveSnapshot(); await saveSchedule();
   toast('已儲存');
 };
 document.getElementById('popInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pConfirm').click();});
@@ -1390,7 +1391,7 @@ document.getElementById('editConfirm').onclick = async () => {
   const k = `${m}|${d}|${g}`;
   if (scheduleData[k] && scheduleData[k][idx] !== undefined) {
     scheduleData[k][idx].text = newText;
-    await saveSchedule();
+    saveSnapshot(); await saveSchedule();
     document.getElementById('editOv').style.display = 'none';
     toast('已更新');
   }
@@ -1460,7 +1461,7 @@ window.ctxPaste = async function() {
   if (!scheduleData[k]) scheduleData[k] = [];
   if (!scheduleData[k].some(e => e.type === clipboard.type && e.text === clipboard.text)) {
     scheduleData[k].push({ ...clipboard });
-    await saveSchedule();
+    saveSnapshot(); await saveSchedule();
     toast('已貼上：' + clipboard.text);
   }
   ctxMenu.style.display = 'none';
@@ -1480,7 +1481,7 @@ window.ctxDelete = async function() {
   if (scheduleData[k]) {
     scheduleData[k].splice(idx, 1);
     if (!scheduleData[k].length) delete scheduleData[k];
-    await saveSchedule();
+    saveSnapshot(); await saveSchedule();
     toast('已刪除');
   }
   ctxMenu.style.display = 'none';
@@ -1571,7 +1572,7 @@ async function execCmd(raw){
     if(!found){cmdLog('⚠️ 找不到領隊','cmd-err');return;}
     guides=guides.filter(g=>g!==found);
     Object.keys(scheduleData).forEach(k=>{if(k.endsWith('|'+found))delete scheduleData[k];});
-    await saveGuides();await saveSchedule();cmdLog(`✅ 已刪除「${found}」`,'cmd-ok');return;
+    await saveGuides();saveSnapshot(); await saveSchedule();cmdLog(`✅ 已刪除「${found}」`,'cmd-ok');return;
   }
 
   // /改名
@@ -1583,7 +1584,7 @@ async function execCmd(raw){
     if(guides.some(g=>normName(g)===normName(newN))){cmdLog(`⚠️ 「${newN}」已存在`,'cmd-err');return;}
     guides=guides.map(g=>g===oldN?newN:g);
     const nd={};Object.entries(scheduleData).forEach(([k,v])=>{const p=k.split('|');if(p[2]===oldN)p[2]=newN;nd[p.join('|')]=v;});
-    scheduleData=nd;await saveGuides();await saveSchedule();cmdLog(`✅ 「${oldN}」→「${newN}」`,'cmd-ok');return;
+    scheduleData=nd;await saveGuides();saveSnapshot(); await saveSchedule();cmdLog(`✅ 「${oldN}」→「${newN}」`,'cmd-ok');return;
   }
 
   // /加入 效文 "塔曼山"
@@ -1603,7 +1604,7 @@ async function execCmd(raw){
       cur.setDate(cur.getDate()+1);
     }
     if(curMonth!==dates.first.getMonth()+1)curMonth=dates.first.getMonth()+1;
-    await saveSchedule();cmdLog(`✅ 已將 ${newGs.join('、')} 加入「${tripName}」，共${filled}筆`,'cmd-ok');return;
+    saveSnapshot(); await saveSchedule();cmdLog(`✅ 已將 ${newGs.join('、')} 加入「${tripName}」，共${filled}筆`,'cmd-ok');return;
   }
 
   // /換領隊 舊 新 "行程名"
@@ -1654,7 +1655,7 @@ async function execCmd(raw){
         cur.setDate(cur.getDate()+1);
       }
     }
-    await saveSchedule();
+    saveSnapshot(); await saveSchedule();
     cmdLog(`✅ ${tripName?`「${tripName}」`:'所有行程'} ${oldG}→${newG}（行程${changed}天，會議${meetings}筆）`,'cmd-ok');return;
   }
 
@@ -1683,7 +1684,7 @@ async function execCmd(raw){
       for(const g of ugs){const k=`${m}|${d}|${g}`;if(!scheduleData[k])scheduleData[k]=[];if(!scheduleData[k].some(e=>e.type==='trip'&&e.text===tripName)){scheduleData[k].push({type:'trip',text:tripName});filled++;}}
       cur.setDate(cur.getDate()+1);
     }
-    if(curMonth!==smo)curMonth=smo;await saveSchedule();
+    if(curMonth!==smo)curMonth=smo;saveSnapshot(); await saveSchedule();
     cmdLog(`✅ 已新增「${tripName}」${smo}/${sda}~${emo}/${eda}${ugs.length?` 領隊：${ugs.join('、')}`:'（未指定領隊）'}，共${filled}筆`,'cmd-ok');return;
   }
 
@@ -1705,7 +1706,7 @@ async function execCmd(raw){
     if(idx>=0)arr[idx]={type,text:newText};
     else{if(!scheduleData[k])scheduleData[k]=[];scheduleData[k].push({type,text:newText});}
     if(idx>=0)scheduleData[k]=arr;
-    if(curMonth!==m)curMonth=m;await saveSchedule();
+    if(curMonth!==m)curMonth=m;saveSnapshot(); await saveSchedule();
     cmdLog(`✅ 已修改 ${gFound} ${m}/${d} [${typeKey}] → ${newText}`,'cmd-ok');return;
   }
 
@@ -1748,7 +1749,7 @@ async function execCmd(raw){
             scheduleData[k].push({type,text});
           }
         }
-        if(curMonth!==m)curMonth=m;await saveSchedule();
+        if(curMonth!==m)curMonth=m;saveSnapshot(); await saveSchedule();
         cmdLog(`✅ 「${matchedTripName}」${meetKw} ${m}/${d} ${text} → ${tripGs.join('、')}（${tripGs.length}人）`,'cmd-ok');return;
       } else {
         cmdLog(`⚠️ 找不到行程「${beforeKw}」，請確認行程名稱或用引號包住`,'cmd-err');return;
@@ -1866,7 +1867,7 @@ async function execCmd(raw){
     const k=`${m}|${d}|${gFound}`;
     if(typeMatch){const t=TYPES_MAP[typeMatch];scheduleData[k]=(scheduleData[k]||[]).filter(e=>e.type!==t);if(!scheduleData[k].length)delete scheduleData[k];cmdLog(`✅ 已清除 ${gFound} ${m}/${d} [${typeMatch}]`,'cmd-ok');}
     else{delete scheduleData[k];cmdLog(`✅ 已清除 ${gFound} ${m}/${d} 全部`,'cmd-ok');}
-    await saveSchedule();return;
+    saveSnapshot(); await saveSchedule();return;
   }
 
   // /批次
@@ -1888,7 +1889,7 @@ async function execCmd(raw){
       if(!scheduleData[k].some(e=>e.type===type&&e.text===(tripName||TYPES[type].label))){scheduleData[k].push({type,text:tripName||TYPES[type].label});count++;}
       cur.setDate(cur.getDate()+1);
     }
-    await saveSchedule();cmdLog(`✅ 已批次填入 ${gFound} ${m1}/${d1}~${m2}/${d2} [${typeKey}] ${tripName||''} 共${count}天`,'cmd-ok');return;
+    saveSnapshot(); await saveSchedule();cmdLog(`✅ 已批次填入 ${gFound} ${m1}/${d1}~${m2}/${d2} [${typeKey}] ${tripName||''} 共${count}天`,'cmd-ok');return;
   }
 
   // 自然語言：Chris 9/5 "TMB-G1"
@@ -1924,11 +1925,39 @@ async function execCmd(raw){
   if(SINGLE_TYPES.includes(type)){const idx=scheduleData[k].findIndex(e=>SINGLE_TYPES.includes(e.type));if(idx>=0)scheduleData[k].splice(idx,1);}
   scheduleData[k].push({type,text:text||TYPES[type].label});
   if(curMonth!==m)curMonth=m;
-  await saveSchedule();
+  saveSnapshot(); await saveSchedule();
   cmdLog(`✅ ${gFound} ${m}/${d} → [${TYPES[type].label}] ${text||TYPES[type].label}`,'cmd-ok');
   setTimeout(()=>{const rows=document.querySelectorAll('#tbody tr');if(rows[d-1])rows[d-1].scrollIntoView({block:'center',behavior:'smooth'});},100);
 } // end execCmd
 
+
+// ── 還原功能 ──
+const undoStack = [];
+const MAX_UNDO = 20;
+
+function saveSnapshot(){
+  undoStack.push(JSON.stringify(scheduleData));
+  if(undoStack.length > MAX_UNDO) undoStack.shift();
+}
+
+async function undo(){
+  if(!undoStack.length){toast('沒有可還原的操作');return;}
+  const prev = undoStack.pop();
+  scheduleData = JSON.parse(prev);
+  await saveSchedule();
+  toast('↩️ 已還原上一步');
+  cmdLog('↩️ 已還原上一步','cmd-ok');
+}
+
+document.addEventListener('keydown', e=>{
+  if((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey){
+    const active = document.activeElement;
+    if(active.tagName!=='INPUT' && active.tagName!=='TEXTAREA'){
+      e.preventDefault();
+      undo();
+    }
+  }
+});
 
 window.firebase_signout = async function(){
   await signOut(auth);
