@@ -165,6 +165,7 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #ddeeff;}
 .guide-chips-small{display:flex;flex-wrap:wrap;gap:4px;}
 .gchip-small{font-size:11px;padding:1px 8px;border-radius:999px;background:#e8edf5;color:var(--text2);border:1px solid var(--border);}
 .no-results{text-align:center;color:var(--text3);padding:40px;font-size:14px;}
+.search-result-row:hover{background:#f0f5ff !important;}
 
 /* ── ADMIN TAB ── */
 #adminTab{display:none;flex:1;overflow-y:auto;padding:20px;}
@@ -312,12 +313,12 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
           <h3 id="mTitle"></h3>
           <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
             <div style="position:relative;">
-              <input type="text" id="schSearch" placeholder="🔍 搜尋班表..." autocomplete="off"
-                style="font-size:12px;padding:5px 10px 5px 28px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text);font-family:inherit;width:180px;outline:none;"
+              <input type="text" id="schSearch" placeholder="🔍 搜尋班表（跨月）..." autocomplete="off"
+                style="font-size:12px;padding:5px 10px 5px 10px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text);font-family:inherit;width:200px;outline:none;"
                 oninput="searchSchedule(this.value)"/>
-              <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3);">🔍</span>
+              <div id="searchResults" style="display:none;position:absolute;top:100%;left:0;width:360px;max-height:320px;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:200;margin-top:4px;"></div>
             </div>
-            <button id="schSearchClear" onclick="clearSearch()" style="display:none;padding:4px 10px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text2);cursor:pointer;">✕ 清除</button>
+            <button id="schSearchClear" onclick="clearSearch()" style="display:none;padding:4px 10px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text2);cursor:pointer;">✕</button>
           </div>
           <div class="legend">
             <div class="leg"><div class="lb" style="background:var(--green)"></div>行程</div>
@@ -1267,45 +1268,80 @@ window.renderTrips=function(){
 };
 
 
-// ── 搜尋功能 ──
+// ── 搜尋功能（跨月份）──
 let searchHighlights = [];
 window.searchSchedule = function(q) {
-  // Clear previous highlights
-  document.querySelectorAll('.search-hl').forEach(el => {
-    el.classList.remove('search-hl');
-    el.style.outline = '';
-  });
-  searchHighlights = [];
+  clearSearchHighlights();
   document.getElementById('schSearchClear').style.display = q ? 'inline-block' : 'none';
+  document.getElementById('searchResults').style.display = q ? 'block' : 'none';
   if (!q || q.length < 1) return;
   const keyword = q.toLowerCase();
-  document.querySelectorAll('#tbody td .chip').forEach(chip => {
-    const text = chip.textContent.toLowerCase();
-    if (text.includes(keyword)) {
-      chip.classList.add('search-hl');
-      chip.style.outline = '2px solid #f5a623';
-      chip.style.outlineOffset = '1px';
-      searchHighlights.push(chip);
+  const results = [];
+
+  // Search all months
+  for(let m=1;m<=12;m++){
+    for(let d=1;d<=dim(m);d++){
+      guides.forEach(g=>{
+        const entries = scheduleData[`${m}|${d}|${g}`] || [];
+        entries.forEach((e,i)=>{
+          const text = (e.text||TYPES[e.type].label).toLowerCase();
+          if(text.includes(keyword)){
+            results.push({m,d,g,e,i,text:e.text||TYPES[e.type].label,type:e.type});
+          }
+        });
+      });
     }
-  });
-  // Scroll to first result
-  if (searchHighlights.length > 0) {
-    searchHighlights[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
-    cmdLog(`🔍 找到 ${searchHighlights.length} 筆「${q}」`, 'cmd-info');
-  } else {
-    cmdLog(`🔍 找不到「${q}」`, 'cmd-err');
   }
+
+  const area = document.getElementById('searchResults');
+  if(!results.length){
+    area.innerHTML=`<div style="padding:12px;color:var(--text2);font-size:13px;">找不到「${q}」</div>`;
+    return;
+  }
+
+  area.innerHTML=`
+    <div style="padding:8px 12px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border);">
+      找到 ${results.length} 筆結果
+    </div>
+    ${results.map(r=>`
+      <div class="search-result-row" onclick="jumpToResult(${r.m},${r.d},'${r.g}',${r.i})"
+        style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f5f6f8;display:flex;gap:8px;align-items:center;">
+        <span style="font-size:11px;color:var(--text3);white-space:nowrap;">${r.m}/${r.d}</span>
+        <span style="font-size:11px;color:#1f5c9e;white-space:nowrap;">${r.g}</span>
+        <span class="tag ${TYPES[r.type].cls}" style="margin:0;font-size:11px;padding:1px 6px;">${r.text}</span>
+      </div>`).join('')}
+  `;
+};
+
+window.jumpToResult = function(m, d, g, i) {
+  // Switch to that month
+  if(curMonth !== m){ curMonth = m; renderTable(); }
+  // Highlight the cell
+  setTimeout(()=>{
+    const rows = document.querySelectorAll('#tbody tr');
+    if(rows[d-1]){
+      rows[d-1].scrollIntoView({block:'center', behavior:'smooth'});
+      rows[d-1].style.background='#fffbe6';
+      setTimeout(()=>rows[d-1].style.background='', 1500);
+    }
+  }, 100);
+  document.getElementById('searchResults').style.display='none';
 };
 
 window.clearSearch = function() {
   document.getElementById('schSearch').value = '';
-  document.querySelectorAll('.search-hl').forEach(el => {
-    el.classList.remove('search-hl');
-    el.style.outline = '';
-  });
-  searchHighlights = [];
+  clearSearchHighlights();
   document.getElementById('schSearchClear').style.display = 'none';
+  document.getElementById('searchResults').style.display = 'none';
 };
+
+function clearSearchHighlights(){
+  document.querySelectorAll('.search-hl').forEach(el=>{
+    el.classList.remove('search-hl');
+    el.style.outline='';
+  });
+  searchHighlights=[];
+}
 
 // ── 複製貼上 ──
 let clipboard = null; // {type, text}
