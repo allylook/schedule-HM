@@ -1437,11 +1437,12 @@ async function execCmd(raw){
         const type=TYPES_MAP[meetKw];
         const parts=[];
         if(timeM&&mode!=='回看')parts.push(timeM[1]);
+        parts.push(matchedTripName);
         if(mode!=='現場')parts.push(`[${mode}]`);
-        const text=parts.join(' ')||meetKw;
+        const text=parts.join(' ');
         for(const g of tripGs){const k=`${m}|${d}|${g}`;if(!scheduleData[k])scheduleData[k]=[];scheduleData[k].push({type,text});}
         if(curMonth!==m)curMonth=m;await saveSchedule();
-        cmdLog(`✅ 「${matchedTripName}」${meetKw} ${m}/${d} ${text||'（現場）'} → ${tripGs.join('、')}`,'cmd-ok');return;
+        cmdLog(`✅ 「${matchedTripName}」${meetKw} ${m}/${d} ${text} → ${tripGs.join('、')}（${tripGs.length}人）`,'cmd-ok');return;
       } else {
         cmdLog(`⚠️ 找不到行程「${beforeKw}」，請確認行程名稱或用引號包住`,'cmd-err');return;
       }
