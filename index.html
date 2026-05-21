@@ -1442,6 +1442,7 @@ async function execCmd(raw){
         const parts=[];
         if(timeM&&mode!=='回看')parts.push(timeM[1]);
         parts.push(matchedTripName);
+        parts.push(meetKw);
         if(mode!=='現場')parts.push(`[${mode}]`);
         const text=parts.join(' ');
         for(const g of tripGs){
@@ -1616,6 +1617,7 @@ async function execCmd(raw){
     if(timeM2&&meetMode!=='回看')parts.push(timeM2[1]);
     if(qt)parts.push(qt);
     else{const r=cmd.replace(gFound,'').replace(dm[0],'').replace(typeKey,'').replace(timeM2?timeM2[0]:'','').replace(meetMode||'','').replace(/[，,。\s]+/g,' ').trim();if(r)parts.push(r);}
+    parts.push(typeKey);
     if(meetMode&&meetMode!=='現場')parts.push(`[${meetMode}]`);
     text=parts.join(' ')||TYPES[type].label;
   } else {
