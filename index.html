@@ -983,23 +983,56 @@ window.queryStat=function(){
   const mEnd=parseInt(document.getElementById('statMonthEnd2').value);
   document.getElementById('queryTitle').textContent=`${mStart}月－${mEnd}月 出團統計`;
   const stats={};
-  guides.forEach(g=>{stats[g]={days:0,trips:0};});
+  guides.forEach(g=>{stats[g]={days:0,trips:0,tripList:[]};});
+
+  // Build trip list per guide
   for(let m=mStart;m<=mEnd;m++){
     for(let d=1;d<=dim(m);d++){
       guides.forEach(g=>{
-        if((scheduleData[`${m}|${d}|${g}`]||[]).some(e=>e.type==='trip')){
+        const entries=scheduleData[`${m}|${d}|${g}`]||[];
+        const tripEntry=entries.find(e=>e.type==='trip');
+        if(tripEntry){
           stats[g].days++;
-          if(d===1||!(scheduleData[`${m}|${d-1}|${g}`]||[]).some(e=>e.type==='trip'))stats[g].trips++;
+          // Check if new trip (first day)
+          const prevEntries=scheduleData[`${m}|${d-1}|${g}`]||[];
+          const isNewTrip=d===1||!prevEntries.some(e=>e.type==='trip'&&e.text===tripEntry.text);
+          if(isNewTrip){
+            stats[g].trips++;
+            stats[g].tripList.push({name:tripEntry.text,startM:m,startD:d,endM:m,endD:d,days:1});
+          } else {
+            const last=stats[g].tripList[stats[g].tripList.length-1];
+            if(last){last.endM=m;last.endD=d;last.days++;}
+          }
         }
       });
     }
   }
-  const sorted=guides.slice().sort((a,b)=>stats[b].days-stats[a].days);
+
+  const sorted=guides.slice().sort((a,b)=>stats[b].days-stats[a].days).filter(g=>stats[g].days>0);
+
+  const rows=sorted.map(g=>{
+    const tripRows=stats[g].tripList.map(t=>
+      `<tr style="background:#f8faff;"><td style="padding-left:28px;font-size:12px;color:var(--text2);">└ ${t.name}</td><td style="font-size:12px;color:var(--text2);">${t.startM}/${t.startD} ~ ${t.endM}/${t.endD}</td><td style="font-size:12px;color:var(--text2);">${t.days}天</td></tr>`
+    ).join('');
+    return `<tr class="stat-row" onclick="this.nextElementSibling&&(this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none')" style="cursor:pointer;">
+      <td><strong>${g}</strong> <span style="font-size:11px;color:var(--text3);">▼</span></td>
+      <td>${stats[g].days}</td>
+      <td>${stats[g].trips}</td>
+    </tr>
+    <tr class="detail-rows"><td colspan="3" style="padding:0;"><table style="width:100%">${tripRows}</table></td></tr>`;
+  }).join('');
+
   document.getElementById('resultArea').innerHTML=`
-    <div class="stat-grid">${sorted.filter(g=>stats[g].days>0).map(g=>`<div class="stat-card"><div class="stat-name">${g}</div><div class="stat-val">${stats[g].days}</div><div class="stat-sub">天 / ${stats[g].trips} 趟</div></div>`).join('')}</div>
-    <table class="result-table"><thead><tr><th>領隊</th><th>出團天數</th><th>出團趟數</th></tr></thead>
-    <tbody>${sorted.map(g=>`<tr><td>${g}</td><td>${stats[g].days}</td><td>${stats[g].trips}</td></tr>`).join('')}</tbody></table>`;
+    <div class="stat-grid">${sorted.map(g=>`<div class="stat-card"><div class="stat-name">${g}</div><div class="stat-val">${stats[g].days}</div><div class="stat-sub">天 / ${stats[g].trips} 趟</div></div>`).join('')}</div>
+    <table class="result-table">
+      <thead><tr><th>領隊（點擊展開）</th><th>出團天數</th><th>出團趟數</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  // Add CSS for detail rows
+  document.querySelectorAll('.detail-rows').forEach(r=>r.style.display='none');
 };
+
 
 window.exportExcel=function(){
   const m=parseInt(document.getElementById('exportMonthSel').value);
