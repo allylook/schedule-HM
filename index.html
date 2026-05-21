@@ -1004,21 +1004,19 @@ window.queryStat=function(){
             const last=stats[g].tripList[stats[g].tripList.length-1];
             if(last){last.endM=m;last.endD=d;}
           }
-          // Only count days within the selected range
+          // Count days within selected range
           if(m>=mStart&&m<=mEnd){
             stats[g].days++;
+            const last=stats[g].tripList[stats[g].tripList.length-1];
+            if(last) last.days++;
           }
         }
       });
     }
   }
-  // Count trips that overlap with the range and calculate days within range
+  // Filter trips that overlap with the range
   guides.forEach(g=>{
-    stats[g].tripList=stats[g].tripList.filter(t=>{
-      // Keep trips that overlap with mStart~mEnd
-      const startInRange=t.startM<=mEnd&&t.endM>=mStart;
-      return startInRange;
-    });
+    stats[g].tripList=stats[g].tripList.filter(t=>t.startM<=mEnd&&t.endM>=mStart);
     stats[g].trips=stats[g].tripList.length;
   });
 
