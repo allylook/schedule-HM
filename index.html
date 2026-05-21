@@ -1440,7 +1440,14 @@ async function execCmd(raw){
         parts.push(matchedTripName);
         if(mode!=='現場')parts.push(`[${mode}]`);
         const text=parts.join(' ');
-        for(const g of tripGs){const k=`${m}|${d}|${g}`;if(!scheduleData[k])scheduleData[k]=[];scheduleData[k].push({type,text});}
+        for(const g of tripGs){
+          const k=`${m}|${d}|${g}`;
+          if(!scheduleData[k])scheduleData[k]=[];
+          // 避免重複填入相同類型+說明
+          if(!scheduleData[k].some(e=>e.type===type&&e.text===text)){
+            scheduleData[k].push({type,text});
+          }
+        }
         if(curMonth!==m)curMonth=m;await saveSchedule();
         cmdLog(`✅ 「${matchedTripName}」${meetKw} ${m}/${d} ${text} → ${tripGs.join('、')}（${tripGs.length}人）`,'cmd-ok');return;
       } else {
