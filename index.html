@@ -2307,7 +2307,7 @@ function openAddMeetingModal(tripName, meetType){
     });
     saveSnapshot(); await saveSchedule();
     toast(`✅ 已新增「${tripName}」${typeLabel} ${dateStr} ${timeStr}`);
-    modal.remove(); renderTrips();
+    modal.remove(); setTimeout(()=>renderTrips(), 500);
   };
 }
 
@@ -2368,7 +2368,7 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
     });
     saveSnapshot(); await saveSchedule();
     toast(`✅ 已更新「${tripName}」${typeLabel}`);
-    modal.remove(); renderTrips();
+    modal.remove(); setTimeout(()=>renderTrips(), 500);
   };
 }
 
