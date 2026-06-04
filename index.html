@@ -1356,8 +1356,8 @@ window.renderTrips=function(){
       }).join('');
       // Calendar button (admin only)
       const firstItem=items[0];
-      const timeM2=firstItem.text.match(/(\d{1,2}:\d{2})/);
-      const timeStr2=timeM2?timeM2[1]:'';
+      const timeM2=firstItem.text.match(/(\d{1,2}:\d{2})/) || (firstItem.text.match(/(\d{4})/) ? [null, firstItem.text.match(/(\d{4})/)[1].replace(/(\d{2})(\d{2})/, '$1:$2')] : null);
+      const timeStr2=timeM2?timeM2[1]:''
       const isOnline2=firstItem.text.includes('[線上]');
       const isRecord2=firstItem.text.includes('[回看]');
       const mode2=isRecord2?'回看':isOnline2?'線上':'現場';
@@ -2063,7 +2063,9 @@ window.openCalModal=function(btnEl){
   const allGuides=btnEl.dataset.guides.split(',').filter(Boolean);
   const meetType=btnEl.dataset.type;
   const meetDate=btnEl.dataset.date;
-  const meetTime=btnEl.dataset.time;
+  const rawTime2=btnEl.dataset.time;
+  // Normalize time: 1500 -> 15:00
+  const meetTime=rawTime2?rawTime2.replace(/^(\d{2})(\d{2})$/, '$1:$2'):rawTime2;
   const meetMode=btnEl.dataset.mode;
   sendCalendarInvite(tripName,allGuides,meetType,meetDate,meetTime,meetMode,btnEl);
 };
