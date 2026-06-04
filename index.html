@@ -1372,7 +1372,8 @@ window.renderTrips=function(){
           data-date="${meetDateStr}"
           data-time="${timeStr2}"
           data-mode="${mode2}"
-          >${btnText}</button      return `<div>${badges}${calBtnHtml}</div>`;
+          >${btnText}</button>${recordHtml}</div>`:'';
+      return `<div>${badges}${calBtnHtml}</div>`;
     };
 
     const meetHtml=['pre','hand','review'].map(fmtMeetings).join('');
