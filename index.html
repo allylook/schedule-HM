@@ -1365,8 +1365,7 @@ window.renderTrips=function(){
           data-date="${meetDateStr}"
           data-time="${timeStr2}"
           data-mode="${mode2}"
-          onclick="openCalModal(this)">${btnText}</button>${recordHtml}</div>`:'';
-      return `<div>${badges}${calBtnHtml}</div>`;
+          >${btnText}</button      return `<div>${badges}${calBtnHtml}</div>`;
     };
 
     const meetHtml=['pre','hand','review'].map(fmtMeetings).join('');
@@ -2050,6 +2049,14 @@ async function callWebApp(action, data){
     return {success:true,sent:data.guides||[],failed:[]};
   }catch(e){ return {success:false,error:e.message}; }
 }
+
+// Event delegation for calendar buttons in trips list
+document.getElementById('tripsList').addEventListener('click', function(e){
+  const btn = e.target.closest('button.cal-btn');
+  if(!btn) return;
+  e.stopPropagation();
+  openCalModal(btn);
+});
 
 window.openCalModal=function(btnEl){
   const tripName=btnEl.dataset.trip;
