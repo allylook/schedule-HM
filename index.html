@@ -109,6 +109,12 @@ tr.hol:hover td:first-child,tr.hol:hover td:nth-child(2){background:#ffd5aa;}
 .t-late{background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange-border);}
 .t-leave{background:var(--red-dim);color:var(--red);border:1px solid var(--red-border);}
 .t-pre{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-border);}
+.t-meeting{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
+.s-meeting{background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7;}
+.t-share{background:#fff3e0;color:#e65100;border:1px solid #ffcc80;}
+.s-share{background:#fff3e0;color:#e65100;border-color:#ffcc80;}
+.t-explore{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;}
+.s-explore{background:#e3f2fd;color:#1565c0;border-color:#90caf9;}
 .t-hand{background:var(--peach-dim);color:var(--peach);border:1px solid var(--peach-border);}
 .t-review{background:var(--lime-dim);color:var(--lime);border:1px solid var(--lime-border);}
 .add-tag-btn{font-size:9px;color:var(--text3);border:1px dashed var(--border);border-radius:3px;padding:1px 5px;cursor:pointer;background:none;width:100%;text-align:left;font-family:inherit;transition:all .15s;}
@@ -339,6 +345,9 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
             <div class="leg"><div class="lb" style="background:var(--blue)"></div>提早去</div>
             <div class="leg"><div class="lb" style="background:var(--orange)"></div>延回</div>
             <div class="leg"><div class="lb" style="background:var(--red)"></div>請假</div>
+            <div class="leg"><div class="lb" style="background:#2e7d32"></div>會議</div>
+            <div class="leg"><div class="lb" style="background:#e65100"></div>分享會</div>
+            <div class="leg"><div class="lb" style="background:#1565c0"></div>探路</div>
             <div class="leg"><div class="lb" style="background:var(--purple)"></div>行前</div>
             <div class="leg"><div class="lb" style="background:var(--peach)"></div>交團</div>
             <div class="leg"><div class="lb" style="background:var(--lime)"></div>檢討</div>
@@ -667,6 +676,9 @@ const TYPES = {
   early:{label:'提早去',cls:'t-early',sel:'s-early'},
   late:{label:'延回',cls:'t-late',sel:'s-late'},
   leave:{label:'請假',cls:'t-leave',sel:'s-leave'},
+  meeting:{label:'會議',cls:'t-meeting',sel:'s-meeting',needTime:true},
+  share:{label:'分享會',cls:'t-share',sel:'s-share',needTime:true},
+  explore:{label:'探路',cls:'t-explore',sel:'s-explore',needTime:false},
   pre:{label:'行前',cls:'t-pre',sel:'s-pre',needTime:true},
   hand:{label:'交團',cls:'t-hand',sel:'s-hand',needTime:true},
   review:{label:'檢討',cls:'t-review',sel:'s-review',needTime:true}
@@ -1700,7 +1712,7 @@ window.ctxDelete = async function() {
 };
 
 // ── Command Bar ──
-const TYPES_MAP = {'行程':'trip','提早去':'early','延回':'late','請假':'leave','行前':'pre','交團':'hand','檢討':'review'};
+const TYPES_MAP = {'行程':'trip','提早去':'early','延回':'late','請假':'leave','會議':'meeting','分享會':'share','探路':'explore','行前':'pre','交團':'hand','檢討':'review'};
 const SINGLE_TYPES = ['trip','early','late','leave'];
 
 function cmdLog(msg, cls=''){
