@@ -790,6 +790,7 @@ function setupListeners(){
       removeTripGuide(trip, guide);
     }
     if(action==='add-guide') openAddGuideModal(trip);
+    if(action==='add-meeting') openAddMeetingModal(trip, el.dataset.type);
     if(action==='set-guide-mode'){
       const guide=el.dataset.guide;
       const meetType2=el.dataset.type;
@@ -1318,7 +1319,7 @@ window.renderTrips=function(){
   guides.forEach(g=>{const o=document.createElement('option');o.value=g;o.textContent=g;guideFilter.appendChild(o);});
   guideFilter.value=curGuide;
 
-  // Build trip map
+  // Build trip map - exclude entries with 會議 in name
   const tripMap={};
   const meetingsByGuide={};
   Object.entries(scheduleData).forEach(([k,entries])=>{
@@ -1326,6 +1327,8 @@ window.renderTrips=function(){
     const mi=parseInt(m),di=parseInt(d);
     entries.forEach(e=>{
       if(e.type==='trip'){
+        // Skip entries with 會議 in the name
+        if(e.text.includes('會議')) return;
         if(!tripMap[e.text])tripMap[e.text]={name:e.text,days:[],guides:new Set()};
         tripMap[e.text].days.push({m:mi,d:di,g});
         tripMap[e.text].guides.add(g);
@@ -1492,11 +1495,11 @@ window.renderTrips=function(){
       : guidesHtml;
 
     // Add meeting buttons (admin only)
-    const addMeetHtml=isAdmin?['pre','hand','review'].map(mt=>{
+    const addMeetHtml=isAdmin?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${['pre','hand','review'].map(mt=>{
       const label={pre:'行前',hand:'交團',review:'檢討'}[mt];
-      if(t.meetingData[mt].length>0) return ''; // already has meeting
-      return `<span class="gchip-small" style="cursor:pointer;background:#f0f5ff;color:#1f5c9e;border-color:#1f5c9e;" data-action="add-meeting" data-trip="${tripNameEsc}" data-type="${mt}">+ 新增${label}</span>`;
-    }).join(''):'';
+      if(t.meetingData[mt].length>0) return '';
+      return `<button style="font-size:11px;padding:3px 10px;border-radius:4px;border:1px dashed #1f5c9e;background:#f0f5ff;color:#1f5c9e;cursor:pointer;font-family:inherit;" data-action="add-meeting" data-trip="${tripNameEsc}" data-type="${mt}">＋ 新增${label}</button>`;
+    }).join('')}</div>`:'';
 
     return `<div class="trip-card ${missingClass}">
       <div class="trip-card-header">
@@ -1505,7 +1508,7 @@ window.renderTrips=function(){
         <div class="trip-days">${t.totalDays}天</div>
       </div>
       <div class="trip-info-row"><span class="trip-info-label">領隊</span><span class="trip-info-val"><div class="guide-chips-small">${guideChipsHtml||'<span style="color:var(--text3)">未指定</span>'}</div></span></div>
-      <div class="trip-info-row" style="margin-top:8px"><span class="trip-info-label">會議</span><span class="trip-info-val"><div class="trip-meet">${meetHtml}${addMeetHtml}</div></span></div>
+      <div class="trip-info-row" style="margin-top:8px"><span class="trip-info-label">會議</span><span class="trip-info-val"><div class="trip-meet">${meetHtml}</div>${addMeetHtml}</span></div>
     </div>`;
   }).join('');
 };
