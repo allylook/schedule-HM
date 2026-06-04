@@ -2113,7 +2113,8 @@ async function removeTripGuide(tripName, guide){
 
 function openAddGuideModal(tripName){
   const sel=document.createElement('div');
-  sel.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;';
+  sel.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;max-height:90vh;overflow-y:auto;';
+  sel.className='trip-modal';
   const available=guides.filter(g=>g!=='大會議室'&&g!=='小會議室');
   sel.innerHTML=`
     <h4 style="margin:0 0 16px;color:#1f5c9e;">新增領隊到「${tripName}」</h4>
@@ -2125,7 +2126,7 @@ function openAddGuideModal(tripName){
     <div style="margin-bottom:12px;font-size:12px;color:var(--text3);">出發日期 ~ 結束日期（格式：7/4~7/16）：</div>
     <input type="text" id="addGuideDates" placeholder="例：7/4~7/16" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-bottom:16px;box-sizing:border-box;">
     <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button onclick="this.closest('div[style]').remove()" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;">取消</button>
+      <button onclick="this.closest('.trip-modal').remove()" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;">取消</button>
       <button id="addGuideConfirm" style="padding:8px 16px;background:#1f5c9e;color:#fff;border:none;border-radius:var(--radius);cursor:pointer;">新增</button>
     </div>`;
   document.body.appendChild(sel);
@@ -2154,7 +2155,8 @@ function openAddGuideModal(tripName){
 function openAddMeetingModal(tripName, meetType){
   const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[meetType];
   const modal=document.createElement('div');
-  modal.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;';
+  modal.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;max-height:90vh;overflow-y:auto;';
+  modal.className='trip-modal';
   modal.innerHTML=`
     <h4 style="margin:0 0 16px;color:#1f5c9e;">新增「${tripName}」${typeLabel}</h4>
     <div style="display:grid;gap:10px;margin-bottom:16px;">
@@ -2168,7 +2170,7 @@ function openAddMeetingModal(tripName, meetType){
         </select></div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button onclick="this.closest('div[style]').remove()" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;">取消</button>
+      <button onclick="this.closest('.trip-modal').remove()" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;">取消</button>
       <button id="amConfirm" style="padding:8px 16px;background:#1f5c9e;color:#fff;border:none;border-radius:var(--radius);cursor:pointer;">新增</button>
     </div>`;
   document.body.appendChild(modal);
@@ -2201,9 +2203,13 @@ function openAddMeetingModal(tripName, meetType){
 function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
   const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[meetType];
   const modal=document.createElement('div');
-  modal.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;';
+  modal.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;max-height:90vh;overflow-y:auto;';
+  modal.className='trip-modal';
   modal.innerHTML=`
-    <h4 style="margin:0 0 16px;color:#1f5c9e;">編輯「${tripName}」${typeLabel}</h4>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h4 style="margin:0;color:#1f5c9e;">編輯「${tripName}」${typeLabel}</h4>
+      <span onclick="this.closest('.trip-modal').remove()" style="cursor:pointer;font-size:18px;color:var(--text3);">×</span>
+    </div>
     <div style="display:grid;gap:10px;margin-bottom:16px;">
       <div><label style="font-size:12px;color:var(--text3);">日期</label>
         <input type="text" id="emDate" value="${meetDate}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-top:4px;box-sizing:border-box;"></div>
@@ -2217,8 +2223,8 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
         </select></div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button onclick="this.closest('div[style]').remove()" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;">取消</button>
-      <button id="emConfirm" style="padding:8px 16px;background:#1f5c9e;color:#fff;border:none;border-radius:var(--radius);cursor:pointer;">儲存</button>
+      <button onclick="this.closest('.trip-modal').remove()" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;font-family:inherit;">取消</button>
+      <button id="emConfirm" style="padding:8px 16px;background:#1f5c9e;color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:inherit;">儲存</button>
     </div>`;
   document.body.appendChild(modal);
   modal.querySelector('#emConfirm').onclick=async()=>{
