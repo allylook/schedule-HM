@@ -457,6 +457,7 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
           <option value="name">依行程名稱</option>
         </select>
         <input type="text" id="tripsSearch" placeholder="搜尋行程名稱..." style="width:160px" oninput="renderTrips()"/>
+        <button id="addTripBtn" style="padding:6px 14px;font-size:12px;border-radius:var(--radius);border:none;background:#1f5c9e;color:#fff;cursor:pointer;font-weight:500;white-space:nowrap;">＋ 新增行程</button>
         <span id="tripsCount" style="font-size:12px;color:var(--text3);white-space:nowrap;"></span>
       </div>
       <div class="trips-list" id="tripsList"></div>
@@ -748,6 +749,9 @@ onAuthStateChanged(auth, async user => {
 
 // ── Firestore Listeners ──
 function setupListeners(){
+  // New trip button
+  const addTripBtn=document.getElementById('addTripBtn');
+  if(addTripBtn) addTripBtn.onclick=()=>{ if(isAdmin) openNewTripModal(); else toast('需要管理員權限'); };
   document.getElementById('tripsList').addEventListener('change', async function(e){
     const el=e.target.closest('[data-action="set-guide-mode"]');
     if(!el) return;
@@ -2362,6 +2366,91 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
     saveSnapshot(); await saveSchedule();
     toast(`✅ 已更新「${tripName}」${typeLabel}`);
     modal.remove(); renderTrips();
+  };
+}
+
+// ── 新增行程（從行程總覽）──
+function openNewTripModal(){
+  const modal=document.createElement('div');
+  modal.className='trip-modal';
+  modal.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:400px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;max-height:90vh;overflow-y:auto;';
+  const guideOptions=guides.filter(g=>g!=='大會議室'&&g!=='小會議室')
+    .map(g=>`<option value="${g}">${g}</option>`).join('');
+  modal.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h4 style="margin:0;color:#1f5c9e;">＋ 新增行程</h4>
+      <span onclick="this.closest('.trip-modal').remove()" style="cursor:pointer;font-size:20px;color:var(--text3);">×</span>
+    </div>
+    <div style="display:grid;gap:12px;margin-bottom:16px;">
+      <div>
+        <label style="font-size:12px;color:var(--text3);font-weight:600;">行程名稱</label>
+        <input type="text" id="ntName" placeholder="例：TMB-G6、南九州" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-top:4px;box-sizing:border-box;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <label style="font-size:12px;color:var(--text3);font-weight:600;">出發日期</label>
+          <input type="text" id="ntStart" placeholder="例：7/19" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-top:4px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text3);font-weight:600;">結束日期</label>
+          <input type="text" id="ntEnd" placeholder="例：7/25" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-top:4px;box-sizing:border-box;">
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text3);font-weight:600;">領隊（可多選）</label>
+        <div id="ntGuides" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:8px;">
+          ${guides.filter(g=>g!=='大會議室'&&g!=='小會議室').map(g=>`
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid var(--border);">
+              <input type="checkbox" value="${g}"> ${g}
+            </label>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="this.closest('.trip-modal').remove()" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;font-family:inherit;">取消</button>
+      <button id="ntConfirm" style="padding:8px 20px;background:#1f5c9e;color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:inherit;font-weight:500;">新增</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('#ntName').focus();
+
+  modal.querySelector('#ntConfirm').onclick=async()=>{
+    const name=modal.querySelector('#ntName').value.trim();
+    const startStr=modal.querySelector('#ntStart').value.trim();
+    const endStr=modal.querySelector('#ntEnd').value.trim();
+    const selectedGuides=[...modal.querySelectorAll('#ntGuides input:checked')].map(i=>i.value);
+
+    if(!name){toast('請輸入行程名稱');return;}
+    const sm=startStr.match(/(\d{1,2})\/(\d{1,2})/);
+    const em=endStr.match(/(\d{1,2})\/(\d{1,2})/);
+    if(!sm||!em){toast('請輸入正確的日期格式（如 7/19）');return;}
+
+    const smo=parseInt(sm[1]),sda=parseInt(sm[2]);
+    const emo=parseInt(em[1]),eda=parseInt(em[2]);
+    const startDt=new Date(2026,smo-1,sda);
+    const endDt=new Date(2026,emo-1,eda);
+    if(startDt>endDt){toast('出發日期不能晚於結束日期');return;}
+
+    const btn=modal.querySelector('#ntConfirm');
+    btn.disabled=true;btn.textContent='新增中...';
+
+    const guidesToFill=selectedGuides.length>0?selectedGuides:['__placeholder__'];
+    let filled=0,cur=new Date(startDt);
+    while(cur<=endDt){
+      const m=cur.getMonth()+1,d=cur.getDate();
+      for(const g of guidesToFill){
+        const k=`${m}|${d}|${g}`;
+        if(!scheduleData[k])scheduleData[k]=[];
+        if(!scheduleData[k].some(e=>e.type==='trip'&&e.text===name)){
+          scheduleData[k].push({type:'trip',text:name});filled++;
+        }
+      }
+      cur.setDate(cur.getDate()+1);
+    }
+    if(curMonth!==smo)curMonth=smo;
+    saveSnapshot(); await saveSchedule();
+    toast(`✅ 已新增「${name}」${smo}/${sda}~${emo}/${eda}${selectedGuides.length?` 領隊：${selectedGuides.join('、')}`:'（未指定領隊）'}`);
+    modal.remove();
+    renderTrips();
   };
 }
 
