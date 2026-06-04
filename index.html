@@ -2303,11 +2303,16 @@ function openAddMeetingModal(tripName, meetType){
     });
     const modeTag=mode==='現場'?'':`[${mode}]`;
     const text=[timeStr,tripName,typeLabel,modeTag].filter(Boolean).join(' ');
+    let added=0;
     tripGuides.forEach(g=>{
       const k=`${m}|${d}|${g}`;
       if(!scheduleData[k])scheduleData[k]=[];
-      scheduleData[k].push({type:meetType,text});
+      if(!scheduleData[k].some(e=>e.type===meetType)){
+        scheduleData[k].push({type:meetType,text});
+        added++;
+      }
     });
+    if(added===0){toast('⚠️ 該行程已有此會議記錄');modal.remove();return;}
     saveSnapshot(); await saveSchedule();
     toast(`✅ 已新增「${tripName}」${typeLabel} ${dateStr} ${timeStr}`);
     modal.remove(); setTimeout(()=>renderTrips(), 500);
