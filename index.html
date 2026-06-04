@@ -1356,16 +1356,8 @@ window.renderTrips=function(){
     t.guideList.forEach(g=>{
       const gm=meetingsByGuide[g]||[];
       ['pre','hand','review'].forEach(mt=>{
-        const win=mt==='review'?30:mt==='hand'?30:60;
         gm.filter(m=>{
           if(m.type!==mt)return false;
-          const dt=new Date(2026,m.m-1,m.d);
-          // 時間窗口
-          const inWindow=mt==='review'
-            ?dt>=lastDt&&(dt-lastDt)/864e5<=win
-            :dt<=firstDt&&(firstDt-dt)/864e5<=win;
-          if(!inWindow)return false;
-          // 說明文字必須包含行程名稱關鍵字
           return meetMatchesTrip(m.text, t.name);
         }).forEach(m=>{
           if(!t.meetingData[mt].some(x=>x.m===m.m&&x.d===m.d&&x.text===m.text))
