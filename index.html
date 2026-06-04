@@ -206,6 +206,9 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #ddeeff;}
 .tbtn.s-pre{background:var(--purple-dim);color:var(--purple);border-color:var(--purple-border);}
 .tbtn.s-hand{background:var(--peach-dim);color:var(--peach);border-color:var(--peach-border);}
 .tbtn.s-review{background:var(--lime-dim);color:var(--lime);border-color:var(--lime-border);}
+.tbtn.s-meeting{background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7;}
+.tbtn.s-share{background:#fff3e0;color:#e65100;border-color:#ffcc80;}
+.tbtn.s-explore{background:#e3f2fd;color:#1565c0;border-color:#90caf9;}
 .pop input{width:100%;font-size:13px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:#fff;color:var(--text);font-family:inherit;margin-bottom:12px;}
 .pop input:focus{outline:none;border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
 .pop-hint{font-size:11px;color:var(--text3);margin-bottom:8px;}
@@ -973,7 +976,7 @@ function openPop(m,d,g){
       popState.type=t;
       tg.querySelectorAll('.tbtn').forEach(b=>b.className='tbtn');
       btn.className=`tbtn ${info.sel}`;
-      const isMeeting=['pre','hand','review'].includes(t);
+      const isMeeting=TYPES[t].needTime||['pre','hand','review','meeting','share','explore'].includes(t);
       document.getElementById('meetingFields').style.display=isMeeting?'block':'none';
       document.getElementById('normalFields').style.display=isMeeting?'none':'block';
       if(!isMeeting){
