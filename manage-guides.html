@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head><meta charset="UTF-8"/><title>調整領隊順序</title>
+<style>
+body{font-family:sans-serif;background:#1f5c9e;color:#fff;padding:30px;text-align:center;}
+h1{font-size:20px;margin-bottom:16px;}
+button{padding:12px 28px;font-size:14px;background:#fff;color:#1f5c9e;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin:6px;}
+button:disabled{background:rgba(255,255,255,0.3);color:#fff;cursor:default;}
+#log{margin-top:20px;text-align:left;background:rgba(0,0,0,0.2);border-radius:8px;padding:16px;font-size:13px;line-height:1.8;}
+.ok{color:#a8ffcc;}.err{color:#ffaaaa;}
+</style></head>
+<body>
+<h1>👥 調整領隊順序</h1>
+<p style="opacity:.8">將 Elisa、Sandy 移到 Tracy 後面</p>
+<button id="loginBtn">1. 用 Google 登入</button>
+<button id="goBtn" disabled>2. 開始調整</button>
+<div id="log"></div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const cfg={apiKey:"AIzaSyCi_-ARDDU1KadQ6vNkjSISNcqMnBPA6Mo",authDomain:"qiushan-schedule.firebaseapp.com",projectId:"qiushan-schedule",storageBucket:"qiushan-schedule.firebasestorage.app",messagingSenderId:"617610293986",appId:"1:617610293986:web:989f3d8b493bda0ffd24bb"};
+const app=initializeApp(cfg);
+const db=getFirestore(app);
+const auth=getAuth(app);
+
+function log(m,c=''){const el=document.getElementById('log');el.innerHTML+=`<div class="${c}">${m}</div>`;}
+
+onAuthStateChanged(auth, user=>{
+  if(user){
+    log(`✅ 已登入：${user.email}`,'ok');
+    document.getElementById('loginBtn').disabled=true;
+    document.getElementById('loginBtn').textContent='✅ 已登入';
+    document.getElementById('goBtn').disabled=false;
+  }
+});
+
+document.getElementById('loginBtn').onclick=async()=>{
+  try{ await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch(e){ log('❌ 登入失敗：'+e.message,'err'); }
+};
+
+document.getElementById('goBtn').onclick=async()=>{
+  const btn=document.getElementById('goBtn');
+  btn.disabled=true; btn.textContent='調整中...';
+  try{
+    const snap=await getDoc(doc(db,'config','guides'));
+    const g=[...snap.data().list];
+    log('原始順序：'+g.join('、'));
+    
+    // 移除 Elisa 和 Sandy（如果存在）
+    ['Elisa','Sandy'].forEach(n=>{
+      const i=g.indexOf(n);
+      if(i>-1) g.splice(i,1);
+    });
+    
+    // 找 Tracy 的位置，插入在後面
+    const tracyIdx=g.indexOf('Tracy');
+    if(tracyIdx===-1){ log('⚠️ 找不到 Tracy','err'); btn.disabled=false; return; }
+    g.splice(tracyIdx+1,0,'Elisa','Sandy');
+    
+    await setDoc(doc(db,'config','guides'),{list:g});
+    log('✅ 調整完成！','ok');
+    log('新順序（Tracy附近）：...'+g.slice(Math.max(0,tracyIdx-1),tracyIdx+5).join('、')+'...','ok');
+    log('🎉 請回到班表網站重新整理查看','ok');
+    btn.textContent='✅ 完成';
+  }catch(e){
+    log('❌ 錯誤：'+e.message,'err');
+    btn.disabled=false; btn.textContent='重試';
+  }
+};
+</script>
+</body></html>
