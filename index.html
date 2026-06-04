@@ -508,6 +508,25 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
   </div>
 </div>
 
+<!-- Calendar Invite Modal -->
+<div id="calModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+    <h3 id="calModalTitle" style="font-size:16px;font-weight:600;color:#1f5c9e;margin-bottom:16px;"></h3>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">選擇收件人：</div>
+      <div id="calGuideList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--text3);">活動時間：<span id="calDateTime" style="color:var(--text);font-weight:500;"></span></div>
+      <div style="font-size:12px;color:var(--text3);">參加方式：<span id="calMode" style="color:var(--text);font-weight:500;"></span></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="document.getElementById('calModal').style.display='none'" style="padding:8px 20px;font-size:13px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text2);cursor:pointer;">取消</button>
+      <button id="calSendBtn" style="padding:8px 20px;font-size:13px;border-radius:var(--radius);border:none;background:#1f5c9e;color:#fff;cursor:pointer;font-weight:500;">📅 發送行事曆邀請</button>
+    </div>
+  </div>
+</div>
+
 <!-- Edit Popup -->
 <div id="editOv" class="ov" style="display:none">
   <div class="pop" style="min-width:280px;">
@@ -2026,34 +2045,67 @@ async function callWebApp(action, data){
   }catch(e){ return {success:false,error:e.message}; }
 }
 
-window.sendCalendarInvite=async function(tripName,guides,meetType,meetDate,meetTime,meetMode,btnEl){
+window.sendCalendarInvite=async function(tripName,allGuides,meetType,meetDate,meetTime,meetMode,btnEl){
   if(!isAdmin){toast('需要管理員權限');return;}
-  const key=`${tripName}|${meetType}`;
   const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[meetType];
-  if(calInviteRecords[key]){
-    const prev=calInviteRecords[key];
-    const confirmed=confirm(`「${tripName}」${typeLabel}已於 ${prev.sentAt.slice(0,10)} 發送給 ${prev.guides.join('、')}。\n\n要重新發送嗎？（將先寄取消通知，再寄新邀請）`);
-    if(!confirmed) return;
-    btnEl.disabled=true;btnEl.textContent='取消舊邀請中...';
-    await callWebApp('cancelCalendar',{tripName,guides:prev.guides,meetType,meetDate:prev.meetDate,meetTime:prev.meetTime,meetMode:prev.meetMode,uid:prev.uid});
-  }
-  btnEl.disabled=true;btnEl.textContent='發送中...';
-  const uid=`${tripName}-${meetType}-${Date.now()}`;
-  let isoDate=meetDate;
-  if(meetDate&&!meetDate.includes('-')){
-    const[m,d]=meetDate.split('/');
-    isoDate=`2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-  }
-  const result=await callWebApp('sendCalendar',{tripName,guides,meetType,meetDate:isoDate,meetTime,meetMode:meetMode||'現場',uid});
-  if(result.success){
-    calInviteRecords[key]={sentAt:new Date().toISOString(),guides,meetDate:isoDate,meetTime,meetMode:meetMode||'現場',uid};
+  const key=`${tripName}|${meetType}`;
+  const record=calInviteRecords[key];
+
+  // Show modal
+  document.getElementById('calModalTitle').textContent=`📅 ${tripName} — ${typeLabel}`;
+  document.getElementById('calDateTime').textContent=meetDate+(meetTime?` ${meetTime}`:'');
+  document.getElementById('calMode').textContent=meetMode||'現場';
+  document.getElementById('calModal').style.display='flex';
+
+  // Build guide checkboxes - default select all trip guides
+  const guideListEl=document.getElementById('calGuideList');
+  guideListEl.innerHTML='';
+
+  // All guides in GUIDE_EMAILS, pre-check trip guides
+  const allAvailable=guides.filter(g=>g!=='大會議室'&&g!=='小會議室');
+  allAvailable.forEach(g=>{
+    const checked=allGuides.includes(g);
+    const label=document.createElement('label');
+    label.style.cssText='display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:'+( checked?'#e8f0ff':'#f8f9fc');
+    label.innerHTML=`<input type="checkbox" value="${g}" ${checked?'checked':''}> ${g}`;
+    label.querySelector('input').onchange=e=>{
+      label.style.background=e.target.checked?'#e8f0ff':'#f8f9fc';
+    };
+    guideListEl.appendChild(label);
+  });
+
+  // Send button handler
+  document.getElementById('calSendBtn').onclick=async()=>{
+    const selected=[...guideListEl.querySelectorAll('input:checked')].map(i=>i.value);
+    if(!selected.length){toast('請選擇至少一位收件人');return;}
+
+    const sendBtn=document.getElementById('calSendBtn');
+    sendBtn.disabled=true;sendBtn.textContent='發送中...';
+
+    // Cancel old if resending
+    if(record){
+      await callWebApp('cancelCalendar',{tripName,guides:record.guides,meetType,meetDate:record.meetDate,meetTime:record.meetTime,meetMode:record.meetMode,uid:record.uid});
+    }
+
+    const uid=`${tripName}-${meetType}-${Date.now()}`;
+    let isoDate=meetDate;
+    if(meetDate&&!meetDate.includes('-')){
+      const[m,d]=meetDate.split('/');
+      isoDate=`2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+
+    await callWebApp('sendCalendar',{tripName,guides:selected,meetType,meetDate:isoDate,meetTime,meetMode:meetMode||'現場',uid});
+
+    calInviteRecords[key]={sentAt:new Date().toISOString(),guides:selected,meetDate:isoDate,meetTime,meetMode:meetMode||'現場',uid};
     await saveCalInviteRecords();
-    toast(`✅ 行事曆邀請已寄送給 ${guides.join('、')}`);
-    btnEl.className='cal-btn sent';btnEl.textContent='✅ 已發送';btnEl.disabled=false;
+
+    document.getElementById('calModal').style.display='none';
+    toast(`✅ 行事曆邀請已寄送給 ${selected.join('、')}`);
+    if(btnEl){btnEl.className='cal-btn sent';btnEl.textContent='✅ 已發送';}
     renderTrips();
-  }else{
-    toast('❌ 發送失敗');btnEl.disabled=false;btnEl.textContent='📅 發送行事曆';
-  }
+
+    sendBtn.disabled=false;sendBtn.textContent='📅 發送行事曆邀請';
+  };
 };
 
 // ── 還原功能 ──
