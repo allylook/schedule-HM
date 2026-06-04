@@ -748,8 +748,32 @@ onAuthStateChanged(auth, async user => {
 
 // ── Firestore Listeners ──
 function setupListeners(){
-  // Event delegation for trip card actions
-  document.getElementById('tripsList').addEventListener('click', function(e){
+  document.getElementById('tripsList').addEventListener('change', async function(e){
+    const el=e.target.closest('[data-action="set-guide-mode"]');
+    if(!el) return;
+    const guide=el.dataset.guide;
+    const meetType2=el.dataset.type;
+    const date=el.dataset.date;
+    const newMode=el.value;
+    const dm=date.match(/(\d{1,2})\/(\d{1,2})/);
+    if(!dm) return;
+    const m=parseInt(dm[1]),d=parseInt(dm[2]);
+    const k=`${m}|${d}|${guide}`;
+    const arr=(scheduleData[k]||[]).slice();
+    const idx=arr.findIndex(e=>e.type===meetType2);
+    if(idx>=0){
+      const modeTag=newMode==='現場'?'':`[${newMode}]`;
+      let newText=arr[idx].text.replace(/\[(線上|回看)\]/g,'').trim();
+      if(modeTag) newText=newText+' '+modeTag;
+      arr[idx]={...arr[idx],text:newText};
+      scheduleData[k]=arr;
+      saveSnapshot(); await saveSchedule();
+      const typeLabel=['pre','hand','review'].indexOf(meetType2)>=0?['行前','交團','檢討'][['pre','hand','review'].indexOf(meetType2)]:'';
+      toast(`✅ ${guide} ${typeLabel}：${newMode}`);
+      renderTrips();
+    }
+  });
+  document.getElementById('tripsList').addEventListener('click', async function(e){
     const btn = e.target.closest('button.cal-btn');
     if(btn){e.stopPropagation();openCalModal(btn);return;}
     const el=e.target.closest('[data-action]');
@@ -762,7 +786,31 @@ function setupListeners(){
       removeTripGuide(trip, guide);
     }
     if(action==='add-guide') openAddGuideModal(trip);
-    if(action==='add-meeting') openAddMeetingModal(trip, el.dataset.type);
+    if(action==='set-guide-mode'){
+      const guide=el.dataset.guide;
+      const meetType2=el.dataset.type;
+      const date=el.dataset.date;
+      const time=el.dataset.time;
+      const newMode=el.value;
+      const dm=date.match(/(\d{1,2})\/(\d{1,2})/);
+      if(!dm) return;
+      const m=parseInt(dm[1]),d=parseInt(dm[2]);
+      const k=`${m}|${d}|${guide}`;
+      const arr=scheduleData[k]||[];
+      const idx=arr.findIndex(e=>e.type===meetType2);
+      if(idx>=0){
+        const modeTag=newMode==='現場'?'':`[${newMode}]`;
+        // Keep trip name in text, update mode
+        let newText=arr[idx].text.replace(/\[(線上|回看)\]/g,'').trim();
+        if(modeTag) newText=newText+' '+modeTag;
+        arr[idx]={...arr[idx],text:newText};
+        scheduleData[k]=arr;
+        saveSnapshot(); await saveSchedule();
+        toast(`✅ ${guide} ${['pre','hand','review'].indexOf(meetType2)>=0?['行前','交團','檢討'][['pre','hand','review'].indexOf(meetType2)]:''}：${newMode}`);
+        renderTrips();
+      }
+      return;
+    }
     if(action==='edit-meeting') openEditMeetingModal(trip, el.dataset.type, el.dataset.date, el.dataset.time, el.dataset.mode);
   });
   // Holidays
@@ -1378,13 +1426,37 @@ window.renderTrips=function(){
       // Calendar button (admin only)
       const firstItem=items[0];
       const timeM2=firstItem.text.match(/(\d{1,2}:\d{2})/) || (firstItem.text.match(/(\d{4})/) ? [null, firstItem.text.match(/(\d{4})/)[1].replace(/(\d{2})(\d{2})/, '$1:$2')] : null);
-      const timeStr2=timeM2?timeM2[1]:''
+      const timeStr2=timeM2?timeM2[1]:'';
       const isOnline2=firstItem.text.includes('[線上]');
       const isRecord2=firstItem.text.includes('[回看]');
       const mode2=isRecord2?'回看':isOnline2?'線上':'現場';
       const meetDateStr=`${firstItem.m}/${firstItem.d}`;
       const btnClass=record?'cal-btn sent':'cal-btn';
       const btnText=record?'✅ 已發送':'📅 發送行事曆';
+
+      // Per-guide mode selectors (admin only)
+      const guideModesHtml=isAdmin?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">
+        ${t.guideList.map(g=>{
+          const gItem=items.find(i=>i.guide===g)||items[0];
+          const gOnline=gItem&&gItem.text.includes('[線上]');
+          const gRecord=gItem&&gItem.text.includes('[回看]');
+          const gMode=gRecord?'回看':gOnline?'線上':'現場';
+          return `<span style="font-size:11px;display:flex;align-items:center;gap:3px;">
+            <span style="color:var(--text2);">${g}：</span>
+            <select style="font-size:11px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;"
+              data-action="set-guide-mode"
+              data-trip="${t.name.replace(/"/g,'&quot;')}"
+              data-guide="${g}"
+              data-type="${mt}"
+              data-date="${meetDateStr}"
+              data-time="${timeStr2}">
+              <option value="現場" ${gMode==='現場'?'selected':''}>現場</option>
+              <option value="線上" ${gMode==='線上'?'selected':''}>線上</option>
+              <option value="回看" ${gMode==='回看'?'selected':''}>回看</option>
+            </select></span>`;
+        }).join('')}
+      </div>`:'';
+
       const calBtnHtml=isAdmin?`<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <button class="${btnClass}"
           data-trip="${t.name.replace(/"/g,'&quot;')}"
@@ -1402,7 +1474,7 @@ window.renderTrips=function(){
           data-time="${timeStr2}"
           data-mode="${mode2}">✏️ 編輯</span>
         ${recordHtml}</div>`:'';
-      return `<div>${badges}${calBtnHtml}</div>`;
+      return `<div>${badges}${guideModesHtml}${calBtnHtml}</div>`;
     };
 
     const meetHtml=['pre','hand','review'].map(fmtMeetings).join('');
