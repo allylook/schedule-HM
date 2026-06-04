@@ -833,6 +833,9 @@ function setupListeners(){
   unsubSchedule = onSnapshot(schedRef, snap => {
     scheduleData = snap.exists() ? (snap.data().entries||{}) : {};
     renderSidebar(); renderTable();
+    // Re-render trips if trips tab is active
+    const tripsTab = document.getElementById('tripsTab');
+    if(tripsTab && tripsTab.style.display !== 'none') renderTrips();
   });
 }
 
