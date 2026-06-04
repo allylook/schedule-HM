@@ -1000,7 +1000,7 @@ document.getElementById('pConfirm').onclick=async()=>{
   const k=`${m}|${d}|${g}`;
   const arr=(scheduleData[k]||[]).slice();
   let text='';
-  const isMeeting=['pre','hand','review'].includes(type);
+  const isMeeting=TYPES[type]?.needTime||['pre','hand','review','meeting','share','explore'].includes(type);
   if(isMeeting){
     const time=document.getElementById('popTime').value.trim();
     const target=document.getElementById('popTarget').value.trim();
