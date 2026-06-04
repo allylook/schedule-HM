@@ -509,8 +509,8 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
 </div>
 
 <!-- Calendar Invite Modal -->
-<div id="calModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;display:none;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:12px;padding:24px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+<div id="calModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2);position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);">
     <h3 id="calModalTitle" style="font-size:16px;font-weight:600;color:#1f5c9e;margin-bottom:16px;"></h3>
     <div style="margin-bottom:14px;">
       <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">選擇收件人：</div>
@@ -1355,11 +1355,17 @@ window.renderTrips=function(){
       const isRecord2=firstItem.text.includes('[回看]');
       const mode2=isRecord2?'回看':isOnline2?'線上':'現場';
       const meetDateStr=`${firstItem.m}/${firstItem.d}`;
-      const guidesEsc=JSON.stringify(t.guideList).replace(/"/g,"\'").replace(/\[/g,'[').replace(/\]/g,']');
-      const tripEsc=t.name.replace(/'/g,"\\'");
       const btnClass=record?'cal-btn sent':'cal-btn';
       const btnText=record?'✅ 已發送':'📅 發送行事曆';
-      const calBtnHtml=isAdmin?`<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><button class="${btnClass}" onclick="sendCalendarInvite('${tripEsc}',${JSON.stringify(t.guideList)},'${mt}','${meetDateStr}','${timeStr2}','${mode2}',this)">${btnText}</button>${recordHtml}</div>`:'';
+      const calBtnHtml=isAdmin?`<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <button class="${btnClass}"
+          data-trip="${t.name.replace(/"/g,'&quot;')}"
+          data-guides="${t.guideList.join(',')}"
+          data-type="${mt}"
+          data-date="${meetDateStr}"
+          data-time="${timeStr2}"
+          data-mode="${mode2}"
+          onclick="openCalModal(this)">${btnText}</button>${recordHtml}</div>`:'';
       return `<div>${badges}${calBtnHtml}</div>`;
     };
 
@@ -2044,6 +2050,16 @@ async function callWebApp(action, data){
     return {success:true,sent:data.guides||[],failed:[]};
   }catch(e){ return {success:false,error:e.message}; }
 }
+
+window.openCalModal=function(btnEl){
+  const tripName=btnEl.dataset.trip;
+  const allGuides=btnEl.dataset.guides.split(',').filter(Boolean);
+  const meetType=btnEl.dataset.type;
+  const meetDate=btnEl.dataset.date;
+  const meetTime=btnEl.dataset.time;
+  const meetMode=btnEl.dataset.mode;
+  sendCalendarInvite(tripName,allGuides,meetType,meetDate,meetTime,meetMode,btnEl);
+};
 
 window.sendCalendarInvite=async function(tripName,allGuides,meetType,meetDate,meetTime,meetMode,btnEl){
   if(!isAdmin){toast('需要管理員權限');return;}
