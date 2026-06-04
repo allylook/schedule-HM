@@ -2235,11 +2235,10 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
     // Find all guides for this trip
     const tripGuides=new Set();
     Object.entries(scheduleData).forEach(([k,v])=>{
-      const[,,,kg]=k.split('|'); // wait wrong
       const parts=k.split('|');
       if(parts.length<3) return;
-      const kg=parts[2];
-      if(v.some(e=>e.type==='trip'&&e.text===tripName)) tripGuides.add(kg);
+      const g2=parts[2];
+      if(v.some(e=>e.type==='trip'&&e.text===tripName)) tripGuides.add(g2);
     });
     tripGuides.forEach(g=>{
       // Remove old
