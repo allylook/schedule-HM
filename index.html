@@ -1354,21 +1354,26 @@ window.renderTrips=function(){
       const recordHtml=record?`<div class="cal-record">✅ 已發送 ${record.sentAt.slice(0,10)} → ${record.guides.join('、')}</div>`:'';
       if(!items.length) return `<div><span class="meet-badge missing">⚠️ 缺${label}</span></div>`;
       const unique=[...new Map(items.map(i=>[`${i.m}/${i.d}|${i.text}`,i])).values()];
-      const badges=unique.map(item=>{
+      // Group by date+time, show per-guide mode if different
+      const dateGroups={};
+      items.forEach(item=>{
         const timeM=item.text.match(/(\d{1,2}:\d{2})/) || (item.text.match(/(\d{4})/) ? [null, item.text.match(/(\d{4})/)[1].replace(/(\d{2})(\d{2})/, '$1:$2')] : null);
+        const timeStr=timeM?timeM[1]:'';
+        const key=`${item.m}/${item.d}|${timeStr}`;
+        if(!dateGroups[key]) dateGroups[key]={m:item.m,d:item.d,timeStr,guides:[]};
         const isOnline=item.text.includes('[線上]');
         const isRecord=item.text.includes('[回看]');
-        const mode=isRecord?'[回看]':isOnline?'[線上]':'';
-        const timeStr=timeM?timeM[1]:'';
-        // Remove time, mode tags and type keywords from clean text to avoid duplication
-        const clean=item.text
-          .replace(/\d{1,2}:\d{2}/g,'')
-          .replace(/\d{4}/g,'')
-          .replace(/\[(線上|回看)\]/g,'')
-          .replace(/(行前|交團|檢討)/g,'')
-          .trim();
-        const display=[`${item.m}/${item.d}`,timeStr,clean||'',mode].filter(Boolean).join(' ');
-        return `<span class="meet-badge ${mt}" title="${item.guide||''}">${label} ${display}</span>`;
+        const mode=isRecord?'回看':isOnline?'線上':'現場';
+        dateGroups[key].guides.push({guide:item.guide||'',mode});
+      });
+      const badges=Object.values(dateGroups).map(grp=>{
+        // Check if all guides have same mode
+        const modes=[...new Set(grp.guides.map(g=>g.mode))];
+        const modeText=modes.length===1
+          ? (modes[0]!=='現場'?` [${modes[0]}]`:'')
+          : grp.guides.map(g=>`${g.guide}:${g.mode}`).join('、');
+        const display=[`${grp.m}/${grp.d}`,grp.timeStr,modes.length>1?`（${modeText}）`:modeText].filter(Boolean).join(' ');
+        return `<span class="meet-badge ${mt}">${label} ${display}</span>`;
       }).join('');
       // Calendar button (admin only)
       const firstItem=items[0];
