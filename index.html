@@ -1804,13 +1804,32 @@ async function execCmd(raw){
     if(!tripName){cmdLog('⚠️ 請用引號包住團名，如 /加入 效文 "塔曼山"','cmd-err');return;}
     const newGs=findAllGuides(stripQuoted(cmd).replace('/加入','').trim());
     if(!newGs.length){cmdLog('⚠️ 找不到領隊','cmd-err');return;}
-    const dates=getTripDates(tripName);
-    if(!dates){cmdLog(`⚠️ 找不到行程「${tripName}」`,'cmd-err');return;}
+    let dates=getTripDates(tripName);
+    // If not found in scheduleData, ask for date range
+    if(!dates){
+      const rest=stripQuoted(cmd).replace('/加入','').trim();
+      const rM=rest.match(/(\d{1,2})[\/月](\d{1,2})[~～](\d{1,2})[\/月](\d{1,2})/);
+      const sM=rest.match(/(\d{1,2})[\/月](\d{1,2})/);
+      const dM=rest.match(/(\d+)天/);
+      if(rM){
+        const first=new Date(2026,parseInt(rM[1])-1,parseInt(rM[2]));
+        const last=new Date(2026,parseInt(rM[3])-1,parseInt(rM[4]));
+        dates={first,last};
+      } else if(sM&&dM){
+        const first=new Date(2026,parseInt(sM[1])-1,parseInt(sM[2]));
+        const last=new Date(2026,parseInt(sM[1])-1,parseInt(sM[2])+parseInt(dM[1])-1);
+        dates={first,last};
+      } else {
+        cmdLog(`⚠️ 找不到行程「${tripName}」，請加上日期範圍，如 /加入 效文 "KAAA" 7/19~7/21`,'cmd-err');return;
+      }
+    }
     let filled=0,cur=new Date(dates.first);
     while(cur<=dates.last){
       const m=cur.getMonth()+1,d=cur.getDate();
-      const hasDay=Object.keys(scheduleData).some(k=>k.startsWith(`${m}|${d}|`)&&scheduleData[k].some(e=>e.type==='trip'&&e.text===tripName));
-      if(hasDay){for(const g of newGs){const k=`${m}|${d}|${g}`;if(!scheduleData[k])scheduleData[k]=[];if(!scheduleData[k].some(e=>e.type==='trip'&&e.text===tripName)){scheduleData[k].push({type:'trip',text:tripName});filled++;}}}
+      // Remove placeholder if exists
+      const phKey=`${m}|${d}|__placeholder__`;
+      if(scheduleData[phKey]) delete scheduleData[phKey];
+      for(const g of newGs){const k=`${m}|${d}|${g}`;if(!scheduleData[k])scheduleData[k]=[];if(!scheduleData[k].some(e=>e.type==='trip'&&e.text===tripName)){scheduleData[k].push({type:'trip',text:tripName});filled++;}}
       cur.setDate(cur.getDate()+1);
     }
     if(curMonth!==dates.first.getMonth()+1)curMonth=dates.first.getMonth()+1;
@@ -1889,9 +1908,17 @@ async function execCmd(raw){
     const ugs=findAllGuides(rfg);
     let filled=0,cur=new Date(2026,smo-1,sda);
     const edt=new Date(2026,emo-1,eda);
+    // If no guides, store placeholder with dummy key to allow /加入 to find dates
+    const guidesToFill = ugs.length > 0 ? ugs : ['__placeholder__'];
     while(cur<=edt){
       const m=cur.getMonth()+1,d=cur.getDate();
-      for(const g of ugs){const k=`${m}|${d}|${g}`;if(!scheduleData[k])scheduleData[k]=[];if(!scheduleData[k].some(e=>e.type==='trip'&&e.text===tripName)){scheduleData[k].push({type:'trip',text:tripName});filled++;}}
+      for(const g of guidesToFill){
+        const k=`${m}|${d}|${g}`;
+        if(!scheduleData[k])scheduleData[k]=[];
+        if(!scheduleData[k].some(e=>e.type==='trip'&&e.text===tripName)){
+          scheduleData[k].push({type:'trip',text:tripName});filled++;
+        }
+      }
       cur.setDate(cur.getDate()+1);
     }
     if(curMonth!==smo)curMonth=smo;saveSnapshot(); await saveSchedule();
