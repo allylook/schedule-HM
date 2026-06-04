@@ -748,6 +748,13 @@ onAuthStateChanged(auth, async user => {
 
 // ── Firestore Listeners ──
 function setupListeners(){
+  // Calendar button delegation for trips tab
+  document.getElementById('tripsList').addEventListener('click', function(e){
+    const btn = e.target.closest('button.cal-btn');
+    if(!btn) return;
+    e.stopPropagation();
+    openCalModal(btn);
+  });
   // Holidays
   getDoc(doc(db,'config','holidays_2026')).then(snap=>{
     if(snap.exists()) HOL = snap.data().data||HOL;
@@ -2049,14 +2056,6 @@ async function callWebApp(action, data){
     return {success:true,sent:data.guides||[],failed:[]};
   }catch(e){ return {success:false,error:e.message}; }
 }
-
-// Event delegation for calendar buttons in trips list
-document.getElementById('tripsList').addEventListener('click', function(e){
-  const btn = e.target.closest('button.cal-btn');
-  if(!btn) return;
-  e.stopPropagation();
-  openCalModal(btn);
-});
 
 window.openCalModal=function(btnEl){
   const tripName=btnEl.dataset.trip;
