@@ -162,6 +162,12 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #ddeeff;}
 .meet-badge.hand{background:var(--peach-dim);color:var(--peach);border:1px solid var(--peach-border);}
 .meet-badge.review{background:var(--lime-dim);color:var(--lime);border:1px solid var(--lime-border);}
 .meet-badge.missing{background:#fdecea;color:#a01515;border:1px solid #f5a0a0;font-weight:600;}
+.cal-btn{font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid #1f5c9e;background:#fff;color:#1f5c9e;cursor:pointer;font-family:inherit;transition:all .15s;}
+.cal-btn:hover{background:#1f5c9e;color:#fff;}
+.cal-btn.sent{border-color:#1a7a45;color:#1a7a45;}
+.cal-btn.sent:hover{background:#1a7a45;color:#fff;}
+.cal-btn:disabled{opacity:.5;cursor:default;}
+.cal-record{font-size:10px;color:var(--text3);margin-top:2px;}
 .guide-chips-small{display:flex;flex-wrap:wrap;gap:4px;}
 .gchip-small{font-size:11px;padding:1px 8px;border-radius:999px;background:#e8edf5;color:var(--text2);border:1px solid var(--border);}
 #undoBtn:disabled,#redoBtn:disabled{opacity:0.4;cursor:default;}
@@ -711,6 +717,7 @@ onAuthStateChanged(auth, async user => {
     hide('loadingScreen');
     show('app');
     showCmdBar();
+    loadCalInviteRecords();
   } else {
     currentUser = null; isAdmin = false;
     if(unsubSchedule){ unsubSchedule(); unsubSchedule=null; }
@@ -1306,10 +1313,12 @@ window.renderTrips=function(){
     const fmtMeetings=(mt)=>{
       const label={pre:'行前',hand:'交團',review:'檢討'}[mt];
       const items=t.meetingData[mt];
-      if(!items.length) return `<span class="meet-badge missing">⚠️ 缺${label}</span>`;
-      // deduplicate by date+text
+      const key=`${t.name}|${mt}`;
+      const record=calInviteRecords[key];
+      const recordHtml=record?`<div class="cal-record">✅ 已發送 ${record.sentAt.slice(0,10)} → ${record.guides.join('、')}</div>`:'';
+      if(!items.length) return `<div><span class="meet-badge missing">⚠️ 缺${label}</span></div>`;
       const unique=[...new Map(items.map(i=>[`${i.m}/${i.d}|${i.text}`,i])).values()];
-      return unique.map(item=>{
+      const badges=unique.map(item=>{
         const timeM=item.text.match(/(\d{1,2}:\d{2})/);
         const isOnline=item.text.includes('[線上]');
         const isRecord=item.text.includes('[回看]');
@@ -1317,8 +1326,22 @@ window.renderTrips=function(){
         const timeStr=timeM?timeM[1]:'';
         const clean=item.text.replace(/\[(線上|回看)\]/g,'').trim();
         const display=[`${item.m}/${item.d}`,timeStr,clean!==timeStr?clean:'',mode].filter(Boolean).join(' ');
-        return `<span class="meet-badge ${mt}" title="${item.guide}">${label} ${display}</span>`;
+        return `<span class="meet-badge ${mt}" title="${item.guide||''}">${label} ${display}</span>`;
       }).join('');
+      // Calendar button (admin only)
+      const firstItem=items[0];
+      const timeM2=firstItem.text.match(/(\d{1,2}:\d{2})/);
+      const timeStr2=timeM2?timeM2[1]:'';
+      const isOnline2=firstItem.text.includes('[線上]');
+      const isRecord2=firstItem.text.includes('[回看]');
+      const mode2=isRecord2?'回看':isOnline2?'線上':'現場';
+      const meetDateStr=`${firstItem.m}/${firstItem.d}`;
+      const guidesEsc=JSON.stringify(t.guideList).replace(/"/g,"\'").replace(/\[/g,'[').replace(/\]/g,']');
+      const tripEsc=t.name.replace(/'/g,"\\'");
+      const btnClass=record?'cal-btn sent':'cal-btn';
+      const btnText=record?'✅ 已發送':'📅 發送行事曆';
+      const calBtnHtml=isAdmin?`<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><button class="${btnClass}" onclick="sendCalendarInvite('${tripEsc}',${JSON.stringify(t.guideList)},'${mt}','${meetDateStr}','${timeStr2}','${mode2}',this)">${btnText}</button>${recordHtml}</div>`:'';
+      return `<div>${badges}${calBtnHtml}</div>`;
     };
 
     const meetHtml=['pre','hand','review'].map(fmtMeetings).join('');
@@ -1975,6 +1998,63 @@ async function execCmd(raw){
   setTimeout(()=>{const rows=document.querySelectorAll('#tbody tr');if(rows[d-1])rows[d-1].scrollIntoView({block:'center',behavior:'smooth'});},100);
 } // end execCmd
 
+
+// ── 行事曆邀請系統 ──
+const CALENDAR_WEB_APP = 'https://script.google.com/macros/s/AKfycbxjBCxoFsvwZfQJlyOaLXvBw7KpLqUe0iYTDo6v4EWl4oNiDGGscvguTz8wF0uwvMrq/exec';
+let calInviteRecords = {};
+
+async function loadCalInviteRecords(){
+  try{
+    const snap=await getDoc(doc(db,'config','calInviteRecords'));
+    if(snap.exists()) calInviteRecords=snap.data().records||{};
+  }catch(e){}
+}
+
+async function saveCalInviteRecords(){
+  await setDoc(doc(db,'config','calInviteRecords'),{records:calInviteRecords});
+}
+
+async function callWebApp(action, data){
+  try{
+    await fetch(CALENDAR_WEB_APP,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action,...data}),
+      mode:'no-cors'
+    });
+    return {success:true,sent:data.guides||[],failed:[]};
+  }catch(e){ return {success:false,error:e.message}; }
+}
+
+window.sendCalendarInvite=async function(tripName,guides,meetType,meetDate,meetTime,meetMode,btnEl){
+  if(!isAdmin){toast('需要管理員權限');return;}
+  const key=`${tripName}|${meetType}`;
+  const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[meetType];
+  if(calInviteRecords[key]){
+    const prev=calInviteRecords[key];
+    const confirmed=confirm(`「${tripName}」${typeLabel}已於 ${prev.sentAt.slice(0,10)} 發送給 ${prev.guides.join('、')}。\n\n要重新發送嗎？（將先寄取消通知，再寄新邀請）`);
+    if(!confirmed) return;
+    btnEl.disabled=true;btnEl.textContent='取消舊邀請中...';
+    await callWebApp('cancelCalendar',{tripName,guides:prev.guides,meetType,meetDate:prev.meetDate,meetTime:prev.meetTime,meetMode:prev.meetMode,uid:prev.uid});
+  }
+  btnEl.disabled=true;btnEl.textContent='發送中...';
+  const uid=`${tripName}-${meetType}-${Date.now()}`;
+  let isoDate=meetDate;
+  if(meetDate&&!meetDate.includes('-')){
+    const[m,d]=meetDate.split('/');
+    isoDate=`2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  const result=await callWebApp('sendCalendar',{tripName,guides,meetType,meetDate:isoDate,meetTime,meetMode:meetMode||'現場',uid});
+  if(result.success){
+    calInviteRecords[key]={sentAt:new Date().toISOString(),guides,meetDate:isoDate,meetTime,meetMode:meetMode||'現場',uid};
+    await saveCalInviteRecords();
+    toast(`✅ 行事曆邀請已寄送給 ${guides.join('、')}`);
+    btnEl.className='cal-btn sent';btnEl.textContent='✅ 已發送';btnEl.disabled=false;
+    renderTrips();
+  }else{
+    toast('❌ 發送失敗');btnEl.disabled=false;btnEl.textContent='📅 發送行事曆';
+  }
+};
 
 // ── 還原功能 ──
 const undoStack = [];
