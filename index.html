@@ -1345,13 +1345,19 @@ window.renderTrips=function(){
       if(!items.length) return `<div><span class="meet-badge missing">⚠️ 缺${label}</span></div>`;
       const unique=[...new Map(items.map(i=>[`${i.m}/${i.d}|${i.text}`,i])).values()];
       const badges=unique.map(item=>{
-        const timeM=item.text.match(/(\d{1,2}:\d{2})/);
+        const timeM=item.text.match(/(\d{1,2}:\d{2})/) || (item.text.match(/(\d{4})/) ? [null, item.text.match(/(\d{4})/)[1].replace(/(\d{2})(\d{2})/, '$1:$2')] : null);
         const isOnline=item.text.includes('[線上]');
         const isRecord=item.text.includes('[回看]');
         const mode=isRecord?'[回看]':isOnline?'[線上]':'';
         const timeStr=timeM?timeM[1]:'';
-        const clean=item.text.replace(/\[(線上|回看)\]/g,'').trim();
-        const display=[`${item.m}/${item.d}`,timeStr,clean!==timeStr?clean:'',mode].filter(Boolean).join(' ');
+        // Remove time, mode tags and type keywords from clean text to avoid duplication
+        const clean=item.text
+          .replace(/\d{1,2}:\d{2}/g,'')
+          .replace(/\d{4}/g,'')
+          .replace(/\[(線上|回看)\]/g,'')
+          .replace(/(行前|交團|檢討)/g,'')
+          .trim();
+        const display=[`${item.m}/${item.d}`,timeStr,clean||'',mode].filter(Boolean).join(' ');
         return `<span class="meet-badge ${mt}" title="${item.guide||''}">${label} ${display}</span>`;
       }).join('');
       // Calendar button (admin only)
