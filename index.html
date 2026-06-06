@@ -863,7 +863,15 @@ function setupListeners(){
       if(!tripRoles[trip]) return;
       tripRoles[trip][role]=(tripRoles[trip][role]||[]).filter(g=>g!==guide);
       await saveTripRoles();
-      toast(`✅ 已移除${role==='teamControl'?'團控':'業務'}「${guide}」`);
+      // Remove meeting entries for this guide related to this trip
+      Object.keys(scheduleData).forEach(k=>{
+        const parts=k.split('|');
+        if(parts.length<3||parts[2]!==guide) return;
+        scheduleData[k]=(scheduleData[k]||[]).filter(e=>!(['pre','hand','review'].includes(e.type)&&meetMatchesTrip(e.text,trip)));
+        if(!scheduleData[k].length) delete scheduleData[k];
+      });
+      saveSnapshot(); await saveSchedule();
+      toast(`✅ 已移除${role==='teamControl'?'團控':'業務'}「${guide}」並清除相關會議`);
       renderTrips();
     }
     if(action==='set-guide-mode'){
@@ -2323,16 +2331,17 @@ async function callWebApp(action, data){
 
 // ── 行程總覽 直接操作 ──
 async function removeTripGuide(tripName, guide){
-  // Remove all entries for this guide+trip
-  let count=0;
+  // Remove trip entries for this guide
   Object.keys(scheduleData).forEach(k=>{
     const[m,d,g]=k.split('|');
     if(g!==guide) return;
     scheduleData[k]=(scheduleData[k]||[]).filter(e=>!(e.type==='trip'&&e.text===tripName));
-    count++;
+    // Also remove meeting entries related to this trip
+    scheduleData[k]=(scheduleData[k]||[]).filter(e=>!(['pre','hand','review'].includes(e.type)&&meetMatchesTrip(e.text,tripName)));
+    if(!scheduleData[k].length) delete scheduleData[k];
   });
   saveSnapshot(); await saveSchedule();
-  toast(`✅ 已從「${tripName}」移除「${guide}」`);
+  toast(`✅ 已從「${tripName}」移除「${guide}」並清除相關會議`);
   renderTrips();
 }
 
