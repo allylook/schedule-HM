@@ -176,8 +176,6 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #ddeeff;}
 .cal-record{font-size:10px;color:var(--text3);margin-top:2px;}
 .guide-chips-small{display:flex;flex-wrap:wrap;gap:4px;}
 .gchip-small{font-size:11px;padding:1px 8px;border-radius:999px;background:#e8edf5;color:var(--text2);border:1px solid var(--border);}
-#undoBtn:disabled,#redoBtn:disabled{opacity:0.4;cursor:default;}
-#undoBtn:not(:disabled):hover,#redoBtn:not(:disabled):hover{background:#e8edf5;border-color:#1f5c9e;color:#1f5c9e;}
 
 /* ── ADMIN TAB ── */
 #adminTab{display:none;flex:1;overflow-y:auto;padding:20px;}
@@ -361,10 +359,8 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
             <div class="leg"><div class="lb" style="background:var(--lime)"></div>檢討</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
-            <button id="undoBtn" onclick="undo()" disabled title="還原 (Ctrl+Z)"
-              style="padding:5px 12px;font-size:13px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text2);cursor:pointer;">↩ 還原</button>
-            <button id="redoBtn" onclick="redo()" disabled title="重做 (Ctrl+Y)"
-              style="padding:5px 12px;font-size:13px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text2);cursor:pointer;">↪ 重做</button>
+            
+            
             <div style="position:relative;">
               <input type="text" id="schSearch" placeholder="搜尋班表（跨月）" autocomplete="off"
                 style="font-size:12px;padding:5px 10px;border-radius:var(--radius);border:1px solid var(--border);background:#f8f9fc;color:var(--text);font-family:inherit;width:180px;outline:none;"
@@ -2990,43 +2986,49 @@ async function undo(){
   if(!undoStack.length){toast('沒有可還原的操作');return;}
   redoStack.push(JSON.stringify(scheduleData));
   scheduleData = JSON.parse(undoStack.pop());
-  _skipNextSnapshot = 2;
-  await saveSchedule();
+  // 暫停監聽，避免 onSnapshot 覆蓋還原的資料
+  if(unsubSchedule){unsubSchedule();unsubSchedule=null;}
   renderTable(); renderSidebar();
   updateUndoButtons();
   toast('↩️ 已還原');
   cmdLog('↩️ 已還原上一步','cmd-ok');
+  await saveSchedule();
+  // 重新訂閱，跳過第一次（自己寫入的 echo）
+  _skipNextSnapshot=1;
+  const sr=doc(db,'schedule',String(curYear));
+  unsubSchedule=onSnapshot(sr,snap=>{
+    if(_skipNextSnapshot>0){_skipNextSnapshot--;return;}
+    scheduleData=snap.exists()?(snap.data().entries||{}):{};
+    renderSidebar();renderTable();
+    const tt=document.getElementById('tripsTab');
+    if(tt&&tt.style.display!=='none') renderTrips();
+  });
 }
 
 async function redo(){
   if(!redoStack.length){toast('沒有可重做的操作');return;}
   undoStack.push(JSON.stringify(scheduleData));
   scheduleData = JSON.parse(redoStack.pop());
-  _skipNextSnapshot = 2;
-  await saveSchedule();
+  if(unsubSchedule){unsubSchedule();unsubSchedule=null;}
   renderTable(); renderSidebar();
   updateUndoButtons();
   toast('↪️ 已重做');
   cmdLog('↪️ 已重做','cmd-ok');
+  await saveSchedule();
+  _skipNextSnapshot=1;
+  const sr=doc(db,'schedule',String(curYear));
+  unsubSchedule=onSnapshot(sr,snap=>{
+    if(_skipNextSnapshot>0){_skipNextSnapshot--;return;}
+    scheduleData=snap.exists()?(snap.data().entries||{}):{};
+    renderSidebar();renderTable();
+    const tt=document.getElementById('tripsTab');
+    if(tt&&tt.style.display!=='none') renderTrips();
+  });
 }
 
 window.undo = undo;
 window.redo = redo;
 
-document.addEventListener('keydown', e=>{
-  if((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key==='z'){
-    const active = document.activeElement;
-    if(active.tagName!=='INPUT' && active.tagName!=='TEXTAREA'){
-      e.preventDefault(); undo();
-    }
-  }
-  if((e.ctrlKey||e.metaKey) && (e.shiftKey && e.key==='z' || e.key==='y')){
-    const active = document.activeElement;
-    if(active.tagName!=='INPUT' && active.tagName!=='TEXTAREA'){
-      e.preventDefault(); redo();
-    }
-  }
-});
 
 window.firebase_signout = async function(){
   await signOut(auth);
