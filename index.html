@@ -2595,45 +2595,90 @@ async function removeTripGuide(tripName, guide){
 }
 
 function openAddGuideModal(tripName){
+  // Auto-detect trip dates from existing schedule data
+  const tripDays=[];
+  Object.entries(scheduleData).forEach(([k,v])=>{
+    const parts=k.split('|'); if(parts.length<3) return;
+    const[m,d,g]=parts;
+    if(v.some(e=>e.type==='trip'&&e.text===tripName))
+      tripDays.push({m:parseInt(m),d:parseInt(d)});
+  });
+  tripDays.sort((a,b)=>a.m!==b.m?a.m-b.m:a.d-b.d);
+  const hasDates=tripDays.length>0;
+  const firstDay=hasDates?tripDays[0]:null;
+  const lastDay=hasDates?tripDays[tripDays.length-1]:null;
+  const dateHint=hasDates?`${firstDay.m}/${firstDay.d}~${lastDay.m}/${lastDay.d}`:'';
+
   const sel=document.createElement('div');
-  sel.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;max-height:90vh;overflow-y:auto;';
+  sel.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:380px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;max-height:90vh;overflow-y:auto;';
   sel.className='trip-modal';
   const available=guides.filter(g=>g!=='大會議室'&&g!=='小會議室');
   sel.innerHTML=`
-    <h4 style="margin:0 0 16px;color:#1f5c9e;">新增領隊到「${tripName}」</h4>
-    <div style="margin-bottom:12px;font-size:12px;color:var(--text3);">選擇要新增的領隊：</div>
-    <select id="addGuideSelect" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-bottom:16px;">
-      <option value="">請選擇...</option>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h4 style="margin:0;color:#1f5c9e;">新增領隊到「${tripName}」</h4>
+      <span onclick="this.closest('.trip-modal').remove()" style="cursor:pointer;font-size:20px;color:var(--text3);">×</span>
+    </div>
+    <select id="addGuideSelect" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-bottom:12px;">
+      <option value="">請選擇領隊...</option>
       ${available.map(g=>`<option value="${g}">${g}</option>`).join('')}
     </select>
-    <div style="margin-bottom:12px;font-size:12px;color:var(--text3);">出發日期 ~ 結束日期（格式：7/4~7/16）：</div>
-    <input type="text" id="addGuideDates" placeholder="例：7/4~7/16" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-bottom:16px;box-sizing:border-box;">
+    ${hasDates
+      ? `<div style="font-size:12px;color:#1a7a45;background:#f0faf4;border-radius:6px;padding:8px 12px;margin-bottom:12px;">
+          ✅ 自動套用行程日期：<strong>${dateHint}</strong>（${tripDays.length}天）
+        </div>`
+      : `<div style="margin-bottom:12px;">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">日期範圍（格式：7/4~7/16）：</div>
+          <input type="text" id="addGuideDates" placeholder="例：7/4~7/16" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box;">
+        </div>`
+    }
     <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button onclick="this.closest('.trip-modal').remove()" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;">取消</button>
-      <button id="addGuideConfirm" style="padding:8px 16px;background:#1f5c9e;color:#fff;border:none;border-radius:var(--radius);cursor:pointer;">新增</button>
+      <button onclick="this.closest('.trip-modal').remove()" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;font-family:inherit;">取消</button>
+      <button id="addGuideConfirm" style="padding:8px 16px;background:#1f5c9e;color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:inherit;">新增</button>
     </div>`;
   document.body.appendChild(sel);
   sel.querySelector('#addGuideConfirm').onclick=async()=>{
     const g=sel.querySelector('#addGuideSelect').value;
-    const dates=sel.querySelector('#addGuideDates').value.trim();
     if(!g){toast('請選擇領隊');return;}
-    const dm=dates.match(/(\d{1,2})\/(\d{1,2})[~～](\d{1,2})\/(\d{1,2})/);
-    if(!dm){toast('日期格式錯誤，請輸入如 7/4~7/16');return;}
-    const sm=parseInt(dm[1]),sd=parseInt(dm[2]),em=parseInt(dm[3]),ed=parseInt(dm[4]);
-    let cur=new Date(curYear,sm-1,sd);const end=new Date(curYear,em-1,ed);
-    while(cur<=end){
-      const m=cur.getMonth()+1,d=cur.getDate();
+    let days=tripDays;
+    if(!hasDates){
+      const dates=sel.querySelector('#addGuideDates')?.value.trim()||'';
+      const dm=dates.match(/(\d{1,2})\/(\d{1,2})[~～](\d{1,2})\/(\d{1,2})/);
+      if(!dm){toast('日期格式錯誤，請輸入如 7/4~7/16');return;}
+      const sm=parseInt(dm[1]),sd=parseInt(dm[2]),em=parseInt(dm[3]),ed=parseInt(dm[4]);
+      days=[];
+      let cur=new Date(curYear,sm-1,sd);const end=new Date(curYear,em-1,ed);
+      while(cur<=end){days.push({m:cur.getMonth()+1,d:cur.getDate()});cur.setDate(cur.getDate()+1);}
+    }
+    // Fill trip dates in schedule
+    days.forEach(({m,d})=>{
       const k=`${m}|${d}|${g}`;
       if(!scheduleData[k])scheduleData[k]=[];
       if(!scheduleData[k].some(e=>e.type==='trip'&&e.text===tripName))
         scheduleData[k].push({type:'trip',text:tripName});
-      cur.setDate(cur.getDate()+1);
-    }
+    });
+    // Sync existing meetings to new guide
+    let meetAdded=0;
+    ['pre','hand','review'].forEach(mt=>{
+      Object.entries(scheduleData).forEach(([k2,v2])=>{
+        const parts=k2.split('|'); if(parts.length<3) return;
+        const existEntry=v2.find(e=>e.type===mt&&meetMatchesTrip(e.text,tripName));
+        if(existEntry){
+          const[m2,d2]=parts;
+          const nk=`${m2}|${d2}|${g}`;
+          if(!scheduleData[nk])scheduleData[nk]=[];
+          if(!scheduleData[nk].some(e=>e.type===mt&&e.text===existEntry.text)){
+            scheduleData[nk].push({...existEntry});
+            meetAdded++;
+          }
+        }
+      });
+    });
     saveSnapshot(); await saveSchedule();
-    toast(`✅ 已新增「${g}」到「${tripName}」`);
+    toast(`✅ 已新增「${g}」到「${tripName}」${meetAdded>0?`，同步 ${meetAdded} 筆會議`:''}`);
     sel.remove(); renderTrips();
   };
 }
+
 
 function openAddMeetingModal(tripName, meetType){
   const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[meetType];
