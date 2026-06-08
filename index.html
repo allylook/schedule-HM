@@ -347,6 +347,7 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
       <div class="schedule-main">
         <div class="sch-toolbar">
           <h3 id="mTitle"></h3>
+          <button id="guideFilterBtn" onclick="openGuideFilterModal()" style="font-size:12px;padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:#f8f9fc;color:var(--text2);cursor:pointer;white-space:nowrap;">👁 篩選人員</button>
           <div class="legend">
             <div class="leg"><div class="lb" style="background:var(--green)"></div>行程</div>
             <div class="leg"><div class="lb" style="background:var(--blue)"></div>提早去</div>
@@ -694,6 +695,8 @@ const SINGLE = ['trip','early','late','leave'];
 
 let curYear = 2026;
 let curMonth = 7;
+let visibleGuides = new Set(); // empty = show all
+let showPastMonths = false;
 let guides = [];
 let scheduleData = {};
 let currentUser = null;
@@ -949,14 +952,29 @@ function canEdit(g){
 function renderSidebar(){
   const ml = document.getElementById('mlist');
   ml.innerHTML='';
+  const now = new Date();
+  const curRealMonth = (curYear === now.getFullYear()) ? now.getMonth()+1 : (curYear < now.getFullYear() ? 13 : 0);
+
+  // Toggle button for past months
+  const toggleBtn=document.createElement('button');
+  toggleBtn.style.cssText='width:100%;text-align:left;font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 4px;margin-bottom:4px;';
+  toggleBtn.textContent=showPastMonths?'▲ 隱藏過去月份':'▼ 顯示過去月份';
+  toggleBtn.onclick=()=>{showPastMonths=!showPastMonths;renderSidebar();};
+  if(curYear <= now.getFullYear()) ml.appendChild(toggleBtn);
+
   MONTHS.forEach(m=>{
+    // Hide past months unless showPastMonths is true
+    if(!showPastMonths && curYear===now.getFullYear() && m < curRealMonth) return;
     const n = Object.keys(scheduleData).filter(k=>k.startsWith(`${m}|`)&&scheduleData[k]?.length>0).length;
     const btn=document.createElement('button');
     btn.className='mbtn'+(m===curMonth?' active':'');
+    const isPast = curYear===now.getFullYear() && m < curRealMonth;
+    btn.style.opacity = isPast ? '0.5' : '1';
     btn.innerHTML=MN[m]+(n>0?` <span class="mbadge">${n}</span>`:'');
     btn.onclick=()=>{curMonth=m;renderSidebar();renderTable();};
     ml.appendChild(btn);
   });
+
   // Guide chips
   const gc=document.getElementById('gchips');gc.innerHTML='';
   const myName = currentUser?.displayName||currentUser?.email||'';
@@ -973,7 +991,12 @@ function renderSidebar(){
 function renderTable(){
   document.getElementById('mTitle').textContent=`${curYear}年 ${MN[curMonth]}`;
   const m=curMonth, n=dim(m);
-  document.getElementById('thead').innerHTML=`<tr><th>日期</th><th>星期</th>${guides.map(g=>`<th>${g}</th>`).join('')}</tr>`;
+  // Filter guides by visibleGuides
+  const displayGuides = visibleGuides.size > 0 ? guides.filter(g=>visibleGuides.has(g)) : guides;
+  // Update filter button label
+  const filterBtn=document.getElementById('guideFilterBtn');
+  if(filterBtn) filterBtn.textContent=visibleGuides.size>0?`👁 篩選中（${visibleGuides.size}人）`:'👁 篩選人員';
+  document.getElementById('thead').innerHTML=`<tr><th>日期</th><th>星期</th>${displayGuides.map(g=>`<th>${g}</th>`).join('')}</tr>`;
   const tb=document.getElementById('tbody');tb.innerHTML='';
   for(let d=1;d<=n;d++){
     const w=wday(m,d),isSat=w===5,isSun=w===6,h=hol(m,d);
@@ -981,7 +1004,7 @@ function renderTable(){
     tr.className=h?'hol':isSat?'sat':isSun?'sun':'';
     const dl=document.createElement('td');dl.textContent=h?`${m}/${d} ${h}`:`${m}/${d}`;tr.appendChild(dl);
     const wl=document.createElement('td');wl.textContent=WD[w];tr.appendChild(wl);
-    guides.forEach(g=>{
+    displayGuides.forEach(g=>{
       const td=document.createElement('td');
       const cell=document.createElement('div');cell.className='cell';
       const entries=scheduleData[`${m}|${d}|${g}`]||[];
@@ -2303,7 +2326,38 @@ async function execCmd(raw){
 } // end execCmd
 
 
-// ── 年度切換 ──
+function openGuideFilterModal(){
+  const modal=document.createElement('div');
+  modal.className='trip-modal';
+  modal.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:400px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;max-height:90vh;overflow-y:auto;';
+  modal.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h4 style="margin:0;color:#1f5c9e;">👁 篩選顯示人員</h4>
+      <span onclick="this.closest('.trip-modal').remove()" style="cursor:pointer;font-size:20px;color:var(--text3);">×</span>
+    </div>
+    <div style="margin-bottom:10px;display:flex;gap:8px;">
+      <button onclick="document.querySelectorAll('#gfList input').forEach(i=>i.checked=true)" style="font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:#f8f9fc;">全選</button>
+      <button onclick="document.querySelectorAll('#gfList input').forEach(i=>i.checked=false)" style="font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:#f8f9fc;">全清</button>
+    </div>
+    <div id="gfList" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px;">
+      ${guides.map(g=>`
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;">
+          <input type="checkbox" value="${g}" ${visibleGuides.size===0||visibleGuides.has(g)?'checked':''}> ${g}
+        </label>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="visibleGuides.clear();renderTable();this.closest('.trip-modal').remove();" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;font-family:inherit;">顯示全部</button>
+      <button id="gfConfirm" style="padding:8px 16px;background:#1f5c9e;color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:inherit;">套用</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('#gfConfirm').onclick=()=>{
+    const checked=[...modal.querySelectorAll('#gfList input:checked')].map(i=>i.value);
+    visibleGuides = checked.length===guides.length ? new Set() : new Set(checked);
+    renderTable();
+    modal.remove();
+  };
+}
+window.openGuideFilterModal=openGuideFilterModal;
 const HOL_2026 = {'1/1':'元旦','1/27':'農曆除夕補假','1/28':'農曆除夕','1/29':'春節','1/30':'春節','1/31':'春節','2/1':'春節','2/2':'春節','2/3':'初六補假','2/28':'和平紀念日','3/2':'和平紀念日補假','4/3':'兒童節補假','4/4':'兒童節','4/5':'清明節','5/1':'勞動節','5/31':'端午節','6/1':'端午節補假','9/25':'中秋節補假','9/26':'中秋節','9/27':'教師節','9/28':'教師節補假','10/9':'國慶日補假','10/10':'國慶日','10/26':'光復節補休','12/24':'假期','12/25':'行憲紀念日'};
 const HOL_2027 = {'1/1':'元旦','2/15':'除夕','2/16':'春節','2/17':'春節','2/18':'春節','2/19':'春節','2/20':'春節','2/28':'和平紀念日','3/1':'和平紀念日補假','4/4':'兒童節兼清明節','5/1':'勞動節','5/20':'端午節','9/15':'中秋節','9/16':'教師節補假','9/17':'中秋節補假','10/10':'國慶日','10/11':'國慶日補假','12/25':'行憲紀念日'};
 
