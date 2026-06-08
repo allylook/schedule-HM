@@ -1243,11 +1243,11 @@ window.queryMeetingSlot=function(){
 
     const freeGuides=targetGuides.filter(g=>{
       const entries=scheduleData[`${m}|${d}|${g}`]||[];
-      return !entries.some(e=>BUSY_TYPES.includes(e.type));
+      return !entries.length;
     });
     const busyGuides=targetGuides.filter(g=>{
       const entries=scheduleData[`${m}|${d}|${g}`]||[];
-      return entries.some(e=>BUSY_TYPES.includes(e.type));
+      return entries.length>0;
     });
 
     const checkRoom=(room)=>{
@@ -1286,8 +1286,8 @@ window.queryMeetingSlot=function(){
         ${busyGuides.length?`<div style="font-size:12px;"><span style="color:#a01515;font-weight:500;">❌ 忙碌（${busyGuides.length}人）：</span>
           <span style="color:var(--text3);">${busyGuides.map(g=>{
             const entries=scheduleData[`${m}|${d}|${g}`]||[];
-            const trip=entries.find(e=>e.type==='trip');
-            return (trip?`${g}（${trip.text}）`:g)+getRoleLabel(g);
+            const desc=entries.map(e=>e.text||TYPES[e.type]?.label||e.type).join('、');
+            return `${g}（${desc}）${getRoleLabel(g)}`;
           }).join(' ')}</span></div>`:''}
         <div style="font-size:12px;display:flex;gap:12px;margin-top:2px;">
           <span>🏢 大：${bigRoom.free?'<span style="color:#1a7a45;">✅ 有空</span>':`<span style="color:#a01515;">❌ ${bigRoom.events.map(e=>`${e.time?e.time+' ':''}${e.text}`).join('、')}</span>`}</span>
