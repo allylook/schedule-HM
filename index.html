@@ -2595,14 +2595,15 @@ async function removeTripGuide(tripName, guide){
 }
 
 function openAddGuideModal(tripName){
-  // Auto-detect trip dates from existing schedule data
-  const tripDays=[];
+  // Auto-detect trip dates from existing schedule data (deduplicate by date)
+  const tripDaySet=new Set();
   Object.entries(scheduleData).forEach(([k,v])=>{
     const parts=k.split('|'); if(parts.length<3) return;
     const[m,d,g]=parts;
     if(v.some(e=>e.type==='trip'&&e.text===tripName))
-      tripDays.push({m:parseInt(m),d:parseInt(d)});
+      tripDaySet.add(`${m}|${d}`);
   });
+  const tripDays=[...tripDaySet].map(s=>{const[m,d]=s.split('|');return{m:parseInt(m),d:parseInt(d)};});
   tripDays.sort((a,b)=>a.m!==b.m?a.m-b.m:a.d-b.d);
   const hasDates=tripDays.length>0;
   const firstDay=hasDates?tripDays[0]:null;
