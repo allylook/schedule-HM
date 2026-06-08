@@ -2340,10 +2340,12 @@ function openGuideFilterModal(){
       <button onclick="document.querySelectorAll('#gfList input').forEach(i=>i.checked=false)" style="font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:#f8f9fc;">全清</button>
     </div>
     <div id="gfList" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px;">
-      ${guides.map(g=>`
-        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;">
-          <input type="checkbox" value="${g}" ${visibleGuides.size===0||visibleGuides.has(g)?'checked':''}> ${g}
-        </label>`).join('')}
+      ${guides.map(g=>{
+        const isRoom=g==='大會議室'||g==='小會議室';
+        return `<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;${isRoom?'grid-column:span 2;background:#f0f5ff;border-radius:4px;padding:2px 4px;':''}">
+          <input type="checkbox" value="${g}" ${visibleGuides.size===0||visibleGuides.has(g)?'checked':''}> ${isRoom?'🏢 ':''} ${g}
+        </label>`;
+      }).join('')}
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
       <button onclick="visibleGuides.clear();renderTable();this.closest('.trip-modal').remove();" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;font-family:inherit;">顯示全部</button>
