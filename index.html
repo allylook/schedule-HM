@@ -939,7 +939,7 @@ function setupListeners(){
   // Schedule
   const schedRef = doc(db,'schedule',String(curYear));
   unsubSchedule = onSnapshot(schedRef, snap => {
-    if(_skipNextSnapshot){ _skipNextSnapshot=false; return; }
+    if(_skipNextSnapshot>0){ _skipNextSnapshot--; return; }
     scheduleData = snap.exists() ? (snap.data().entries||{}) : {};
     renderSidebar(); renderTable();
     // Re-render trips if trips tab is active
@@ -2519,7 +2519,7 @@ async function switchYear(year){
   scheduleData={};
   const schedRef=doc(db,'schedule',String(year));
   unsubSchedule=onSnapshot(schedRef,snap=>{
-    if(_skipNextSnapshot){ _skipNextSnapshot=false; return; }
+    if(_skipNextSnapshot>0){ _skipNextSnapshot--; return; }
     scheduleData=snap.exists()?(snap.data().entries||{}):{}
 ;    renderSidebar();renderTable();
     const tripsTab=document.getElementById('tripsTab');
@@ -2984,13 +2984,13 @@ function updateUndoButtons(){
   if(redoBtn) redoBtn.disabled = redoStack.length === 0;
 }
 
-let _skipNextSnapshot = false;
+let _skipNextSnapshot = 0;
 
 async function undo(){
   if(!undoStack.length){toast('沒有可還原的操作');return;}
   redoStack.push(JSON.stringify(scheduleData));
   scheduleData = JSON.parse(undoStack.pop());
-  _skipNextSnapshot = true;
+  _skipNextSnapshot = 2;
   await saveSchedule();
   renderTable(); renderSidebar();
   updateUndoButtons();
@@ -3002,7 +3002,7 @@ async function redo(){
   if(!redoStack.length){toast('沒有可重做的操作');return;}
   undoStack.push(JSON.stringify(scheduleData));
   scheduleData = JSON.parse(redoStack.pop());
-  _skipNextSnapshot = true;
+  _skipNextSnapshot = 2;
   await saveSchedule();
   renderTable(); renderSidebar();
   updateUndoButtons();
