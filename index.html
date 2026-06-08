@@ -2987,6 +2987,7 @@ async function undo(){
   redoStack.push(JSON.stringify(scheduleData));
   scheduleData = JSON.parse(undoStack.pop());
   await saveSchedule();
+  renderTable(); renderSidebar();
   updateUndoButtons();
   toast('↩️ 已還原');
   cmdLog('↩️ 已還原上一步','cmd-ok');
@@ -2997,6 +2998,7 @@ async function redo(){
   undoStack.push(JSON.stringify(scheduleData));
   scheduleData = JSON.parse(redoStack.pop());
   await saveSchedule();
+  renderTable(); renderSidebar();
   updateUndoButtons();
   toast('↪️ 已重做');
   cmdLog('↪️ 已重做','cmd-ok');
