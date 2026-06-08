@@ -3004,6 +3004,9 @@ async function redo(){
   cmdLog('↪️ 已重做','cmd-ok');
 }
 
+window.undo = undo;
+window.redo = redo;
+
 document.addEventListener('keydown', e=>{
   if((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key==='z'){
     const active = document.activeElement;
