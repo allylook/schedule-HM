@@ -2926,25 +2926,58 @@ async function loadNotifyLogs(){
       area.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px 0;">尚無寄送記錄</div>';
       return;
     }
-    let html = '';
+
+    // Trip filter
+    const allTrips=new Set();
+    docs.forEach(d=>{
+      Object.keys(d.fields?.trips?.mapValue?.fields||{}).forEach(t=>allTrips.add(t));
+    });
+    let filterHtml=`<div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--text2);">篩選行程：</span>
+      <select id="notifyTripFilter" onchange="filterNotifyLogs()" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;">
+        <option value="">所有行程</option>
+        ${[...allTrips].sort().map(t=>`<option value="${t}">${t}</option>`).join('')}
+      </select>
+    </div>`;
+
+    let logsHtml='';
     docs.forEach(d => {
       const f = d.fields;
       const date = f.date?.stringValue || '';
       const time = f.time?.stringValue || '';
       const total = parseInt(f.totalSent?.integerValue || 0);
-      const logs = (f.logs?.arrayValue?.values || []).map(v => v.stringValue);
-      html += `<div style="border-bottom:1px solid var(--border);padding:8px 0;font-size:12px;">
-        <div style="font-weight:600;color:#1f5c9e;">${date} ${time} — 共寄出 <strong>${total}</strong> 封</div>
-        ${total>0
-          ? `<div style="margin-top:4px;color:var(--text2);">${logs.map(l=>`✅ ${l}`).join('<br>')}</div>`
-          : '<div style="color:var(--text3);">今日無需寄送</div>'}
+      const tripsData = f.trips?.mapValue?.fields || {};
+
+      let tripRows='';
+      Object.entries(tripsData).forEach(([tripName, val])=>{
+        const logs=(val.arrayValue?.values||[]).map(v=>v.stringValue);
+        tripRows+=`<div class="notify-trip-row" data-trip="${tripName}" style="margin:6px 0;padding:6px 10px;background:#f8f9fc;border-radius:6px;border-left:3px solid #1f5c9e;">
+          <div style="font-size:12px;font-weight:600;color:#1f5c9e;margin-bottom:4px;">${tripName}</div>
+          <div style="font-size:11px;color:var(--text2);">${logs.map(l=>`✅ ${l}`).join('<br>')}</div>
+        </div>`;
+      });
+
+      logsHtml+=`<div style="border-bottom:1px solid var(--border);padding:10px 0;">
+        <div style="font-weight:600;color:#333;font-size:13px;margin-bottom:6px;">
+          📅 ${date} ${time} — 共寄出 <strong>${total}</strong> 封
+          ${total===0?'<span style="color:var(--text3);font-size:11px;">（今日無需寄送）</span>':''}
+        </div>
+        <div class="notify-trips-container">${tripRows||'<span style="font-size:11px;color:var(--text3);">無記錄</span>'}</div>
       </div>`;
     });
-    area.innerHTML = html;
+
+    area.innerHTML = filterHtml + `<div id="notifyLogsContent">${logsHtml}</div>`;
   } catch(e) {
     area.innerHTML = `<div style="color:#a01515;font-size:12px;">載入失敗：${e.message}</div>`;
   }
 }
+
+window.filterNotifyLogs = function(){
+  const val = document.getElementById('notifyTripFilter')?.value||'';
+  document.querySelectorAll('.notify-trip-row').forEach(el=>{
+    el.style.display = (!val || el.dataset.trip===val) ? 'block' : 'none';
+  });
+};
 
 window.openCalModal=function(btnEl){
   const tripName=btnEl.dataset.trip;
