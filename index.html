@@ -406,6 +406,17 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
             <button class="q-btn" onclick="queryFree()">查詢</button>
           </div>
         </div>
+        <div class="q-card" style="border-color:#1f5c9e;">
+          <h4 style="color:#1f5c9e;">🏢 行前安排查詢</h4>
+          <div class="q-row" style="flex-wrap:wrap;gap:6px;">
+            <input type="date" id="qMeetStart" value="2026-09-05"/>
+            <span style="color:var(--text2);font-size:12px">至</span>
+            <input type="date" id="qMeetEnd" value="2026-09-05"/>
+            <input type="text" id="qMeetTime" placeholder="時間（如 10:00）" style="width:110px"/>
+            <button class="q-btn" style="background:#1f5c9e;color:#fff;" onclick="queryMeetingSlot()">查詢</button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">顯示每天有空的領隊及會議室狀態</div>
+        </div>
         <div class="q-card">
           <h4>搜尋行程</h4>
           <div class="q-row">
@@ -1164,6 +1175,92 @@ window.queryGuide=function(){
   const area=document.getElementById('resultArea');
   if(!rows.length){area.innerHTML='<div style="color:var(--text2);padding:20px">無紀錄</div>';return;}
   area.innerHTML=`<table class="result-table"><thead><tr><th>日期</th><th>星期</th><th>類型</th><th>說明</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.date}</td><td>${r.wd}</td><td>${r.type}</td><td>${r.text}</td></tr>`).join('')}</tbody></table>`;
+};
+
+window.queryMeetingSlot=function(){
+  const startVal=document.getElementById('qMeetStart').value;
+  const endVal=document.getElementById('qMeetEnd').value;
+  const timeVal=document.getElementById('qMeetTime').value.trim();
+  if(!startVal||!endVal){alert('請選擇日期範圍');return;}
+
+  const start=new Date(startVal);
+  const end=new Date(endVal);
+  if(start>end){alert('開始日期不能晚於結束日期');return;}
+
+  const BUSY_TYPES=['trip','early','late','leave'];
+  const realGuides=guides.filter(g=>g!=='大會議室'&&g!=='小會議室');
+  const WD2=['日','一','二','三','四','五','六'];
+
+  let html='';
+  let cur=new Date(start);
+  while(cur<=end){
+    const m=cur.getMonth()+1, d=cur.getDate();
+    const wd=WD2[cur.getDay()];
+    const h=hol(m,d);
+    const dateLabel=`${m}/${d}（${wd}）${h?` <span style="color:#9b6200;font-size:11px;">${h}</span>`:''}`;
+
+    // Free guides
+    const freeGuides=realGuides.filter(g=>{
+      const entries=scheduleData[`${m}|${d}|${g}`]||[];
+      return !entries.some(e=>BUSY_TYPES.includes(e.type));
+    });
+    const busyGuides=realGuides.filter(g=>{
+      const entries=scheduleData[`${m}|${d}|${g}`]||[];
+      return entries.some(e=>BUSY_TYPES.includes(e.type));
+    });
+
+    // Meeting room status
+    const checkRoom=(room)=>{
+      const entries=scheduleData[`${m}|${d}|${room}`]||[];
+      if(!entries.length) return {free:true, events:[]};
+      const events=entries.map(e=>{
+        const tM=e.text.match(/(\d{1,2}:\d{2})/);
+        return {time:tM?tM[1]:'', text:e.text};
+      });
+      // If time specified, check for conflict
+      if(timeVal){
+        const conflict=events.some(ev=>{
+          if(!ev.time) return true; // no time = assume all day
+          return ev.time===timeVal;
+        });
+        return {free:!conflict, events};
+      }
+      return {free:false, events};
+    };
+
+    const bigRoom=checkRoom('大會議室');
+    const smallRoom=checkRoom('小會議室');
+
+    html+=`<div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:10px;">
+      <div style="font-weight:600;color:#1f5c9e;margin-bottom:8px;font-size:14px;">${dateLabel}</div>
+      <div style="display:grid;gap:6px;">
+        <div style="font-size:12px;">
+          <span style="color:#1a7a45;font-weight:500;">✅ 有空（${freeGuides.length}人）：</span>
+          ${freeGuides.length?`<span style="color:#333;">${freeGuides.join('、')}</span>`:'<span style="color:var(--text3);">無</span>'}
+        </div>
+        ${busyGuides.length?`<div style="font-size:12px;"><span style="color:#a01515;font-weight:500;">❌ 忙碌（${busyGuides.length}人）：</span>
+          <span style="color:var(--text3);">${busyGuides.map(g=>{
+            const entries=scheduleData[`${m}|${d}|${g}`]||[];
+            const trip=entries.find(e=>e.type==='trip');
+            return trip?`${g}（${trip.text}）`:g;
+          }).join('、')}</span></div>`:''}
+        <div style="font-size:12px;display:flex;gap:12px;margin-top:2px;">
+          <span>🏢 大會議室：${bigRoom.free
+            ?'<span style="color:#1a7a45;font-weight:500;">✅ 有空</span>'
+            :`<span style="color:#a01515;font-weight:500;">❌ 已排：</span><span style="color:var(--text3);font-size:11px;">${bigRoom.events.map(e=>`${e.time?e.time+' ':''}${e.text}`).join('、')}</span>`}</span>
+          <span>🏢 小會議室：${smallRoom.free
+            ?'<span style="color:#1a7a45;font-weight:500;">✅ 有空</span>'
+            :`<span style="color:#a01515;font-weight:500;">❌ 已排：</span><span style="color:var(--text3);font-size:11px;">${smallRoom.events.map(e=>`${e.time?e.time+' ':''}${e.text}`).join('、')}</span>`}</span>
+        </div>
+      </div>
+    </div>`;
+    cur.setDate(cur.getDate()+1);
+  }
+
+  const startM=start.getMonth()+1, startD=start.getDate();
+  const endM=end.getMonth()+1, endD=end.getDate();
+  document.getElementById('queryTitle').textContent=`行前安排查詢：${startM}/${startD} ~ ${endM}/${endD}${timeVal?' '+timeVal:''}`;
+  document.getElementById('resultArea').innerHTML=html||'<div style="color:var(--text2);padding:20px">無資料</div>';
 };
 
 window.queryFree=function(){
