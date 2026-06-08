@@ -313,7 +313,7 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
     <div class="logo">丘山<span>行</span></div>
     <div class="header-tabs">
       <button class="htab active" data-tab="schedule">班表</button>
-      <button class="htab" data-tab="query">查詢 / 統計</button>
+      <button class="htab" data-tab="query" id="queryTabBtn">查詢 / 統計</button>
       <button class="htab" data-tab="trips">行程總覽</button>
       <button class="htab admin-only" data-tab="admin" style="display:none">人員管理</button>
     </div>
@@ -380,7 +380,7 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
     </div>
 
     <!-- Query Tab -->
-    <div id="queryTab">
+    <div id="queryTab"><div id="queryYearBadge" style="display:inline-block;margin-bottom:12px;padding:3px 12px;background:#1f5c9e;color:#fff;border-radius:20px;font-size:12px;font-weight:600;">2026 年</div>
       <div class="query-grid">
         <div class="q-card">
           <h4>查詢特定領隊出團紀錄</h4>
@@ -453,7 +453,7 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
     <!-- Trips Overview Tab -->
     <div id="tripsTab">
       <div class="trips-toolbar">
-        <h3>行程總覽</h3>
+        <h3 id="tripYearTitle">行程總覽 2026</h3>
         <select id="tripsMonthFilter" onchange="renderTrips()">
           <option value="0">全年</option>
           <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
@@ -1125,7 +1125,7 @@ window.queryGuide=function(){
   const mv=parseInt(document.getElementById('qMonthSel').value);
   if(!g) return;
   const isFullYear=mv===0;
-  document.getElementById('queryTitle').textContent=`${g} — ${isFullYear?'全年':mv+'月'}出團紀錄`;
+  document.getElementById('queryTitle').textContent=`${g} — ${curYear} ${isFullYear?'全年':mv+'月'}出團紀錄`;
   const rows=[];
   const months=isFullYear?[1,2,3,4,5,6,7,8,9,10,11,12]:[mv];
   months.forEach(m=>{
@@ -2322,6 +2322,13 @@ async function switchYear(year){
     if(tripsTab&&tripsTab.style.display!=='none') renderTrips();
   });
   curMonth=1;
+  // Update title displays
+  const tripTitle=document.getElementById('tripYearTitle');
+  if(tripTitle) tripTitle.textContent=`行程總覽 ${year}`;
+  const qBtn=document.getElementById('queryTabBtn');
+  if(qBtn) qBtn.textContent=`查詢 / 統計 ${year}`;
+  const qBadge=document.getElementById('queryYearBadge');
+  if(qBadge) qBadge.textContent=`${year} 年`;
   toast(`已切換到 ${year} 年`);
 }
 
