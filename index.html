@@ -329,6 +329,10 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
     <!-- Schedule Tab -->
     <div id="scheduleTab">
       <div class="left-panel">
+        <div style="display:flex;gap:6px;margin-bottom:10px;">
+          <button id="yr2026" onclick="switchYear(2026)" style="flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid #1f5c9e;background:#1f5c9e;color:#fff;cursor:pointer;">2026</button>
+          <button id="yr2027" onclick="switchYear(2027)" style="flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid #ccc;background:#f8f9fc;color:#666;cursor:pointer;">2027</button>
+        </div>
         <div class="panel-title">月份</div>
         <div class="month-list" id="mlist"></div>
         <div class="guide-panel" id="guidePanel">
@@ -688,6 +692,7 @@ const TYPES = {
 };
 const SINGLE = ['trip','early','late','leave'];
 
+let curYear = 2026;
 let curMonth = 7;
 let guides = [];
 let scheduleData = {};
@@ -699,8 +704,8 @@ let unsubSchedule = null;
 let unsubGuides = null;
 
 // ── Helpers ──
-const dim = m => new Date(2026, m, 0).getDate();
-const wday = (m,d) => { const w = new Date(2026,m-1,d).getDay(); return w===0?6:w-1; };
+const dim = m => new Date(curYear, m, 0).getDate();
+const wday = (m,d) => { const w = new Date(curYear,m-1,d).getDay(); return w===0?6:w-1; };
 const hol = (m,d) => HOL[`${m}/${d}`]||null;
 
 function toast(msg){ const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500); }
@@ -902,7 +907,7 @@ function setupListeners(){
     if(action==='edit-meeting') openEditMeetingModal(trip, el.dataset.type, el.dataset.date, el.dataset.time, el.dataset.mode);
   });
   // Holidays
-  getDoc(doc(db,'config','holidays_2026')).then(snap=>{
+  getDoc(doc(db,'config',`holidays_${curYear}`)).then(snap=>{
     if(snap.exists()) HOL = snap.data().data||HOL;
   });
   // Guides
@@ -912,7 +917,7 @@ function setupListeners(){
     renderSidebar(); renderTable(); updateQueryGuideSelect();
   });
   // Schedule
-  const schedRef = doc(db,'schedule','2026');
+  const schedRef = doc(db,'schedule',String(curYear));
   unsubSchedule = onSnapshot(schedRef, snap => {
     scheduleData = snap.exists() ? (snap.data().entries||{}) : {};
     renderSidebar(); renderTable();
@@ -923,7 +928,7 @@ function setupListeners(){
 }
 
 async function saveGuides(){ await setDoc(doc(db,'config','guides'),{list:guides}); }
-async function saveSchedule(){ await setDoc(doc(db,'schedule','2026'),{entries:scheduleData}); }
+async function saveSchedule(){ await setDoc(doc(db,'schedule',String(curYear)),{entries:scheduleData}); }
 
 // ── Can Edit ──
 function canEdit(g){
@@ -963,7 +968,7 @@ function renderSidebar(){
 }
 
 function renderTable(){
-  document.getElementById('mTitle').textContent=`2026年 ${MN[curMonth]}`;
+  document.getElementById('mTitle').textContent=`${curYear}年 ${MN[curMonth]}`;
   const m=curMonth, n=dim(m);
   document.getElementById('thead').innerHTML=`<tr><th>日期</th><th>星期</th>${guides.map(g=>`<th>${g}</th>`).join('')}</tr>`;
   const tb=document.getElementById('tbody');tb.innerHTML='';
@@ -1206,7 +1211,7 @@ window.queryTrip=function(){
       if(e.type==='trip'&&e.text.toLowerCase().includes(name.toLowerCase())){
         if(!tripMap[e.text]) tripMap[e.text]={tripName:e.text,guides:[],days:[]};
         if(!tripMap[e.text].guides.includes(g)) tripMap[e.text].guides.push(g);
-        tripMap[e.text].days.push(new Date(2026,parseInt(m)-1,parseInt(d)));
+        tripMap[e.text].days.push(new Date(curYear,parseInt(m)-1,parseInt(d)));
       }
     });
   });
@@ -1337,7 +1342,7 @@ window.exportExcel=function(){
   }
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=`丘山行班表_2026_${m}月.csv`;a.click();
+  const a=document.createElement('a');a.href=url;a.download=`丘山行班表_${curYear}_${m}月.csv`;a.click();
   URL.revokeObjectURL(url);
   toast('已匯出 CSV（可用 Excel 開啟）');
 };
@@ -1433,8 +1438,8 @@ window.renderTrips=function(){
     t.startM=first.m;t.startD=first.d;t.endM=last.m;t.endD=last.d;
     t.totalDays=[...new Set(t.days.map(d=>`${d.m}/${d.d}`))].length;
     t.guideList=[...t.guides];
-    const firstDt=new Date(2026,first.m-1,first.d);
-    const lastDt=new Date(2026,last.m-1,last.d);
+    const firstDt=new Date(curYear,first.m-1,first.d);
+    const lastDt=new Date(curYear,last.m-1,last.d);
     t.meetingData={pre:[],hand:[],review:[]};
     t.guideList.forEach(g=>{
       const gm=meetingsByGuide[g]||[];
@@ -1879,7 +1884,7 @@ async function execCmd(raw){
     const days=[];
     Object.entries(scheduleData).forEach(([k,entries])=>{
       if(entries.some(e=>e.type==='trip'&&e.text===tripName)){
-        const[m,d]=k.split('|');days.push(new Date(2026,parseInt(m)-1,parseInt(d)));
+        const[m,d]=k.split('|');days.push(new Date(curYear,parseInt(m)-1,parseInt(d)));
       }
     });
     if(!days.length) return null;
@@ -1932,12 +1937,12 @@ async function execCmd(raw){
       const sM=rest.match(/(\d{1,2})[\/月](\d{1,2})/);
       const dM=rest.match(/(\d+)天/);
       if(rM){
-        const first=new Date(2026,parseInt(rM[1])-1,parseInt(rM[2]));
-        const last=new Date(2026,parseInt(rM[3])-1,parseInt(rM[4]));
+        const first=new Date(curYear,parseInt(rM[1])-1,parseInt(rM[2]));
+        const last=new Date(curYear,parseInt(rM[3])-1,parseInt(rM[4]));
         dates={first,last};
       } else if(sM&&dM){
-        const first=new Date(2026,parseInt(sM[1])-1,parseInt(sM[2]));
-        const last=new Date(2026,parseInt(sM[1])-1,parseInt(sM[2])+parseInt(dM[1])-1);
+        const first=new Date(curYear,parseInt(sM[1])-1,parseInt(sM[2]));
+        const last=new Date(curYear,parseInt(sM[1])-1,parseInt(sM[2])+parseInt(dM[1])-1);
         dates={first,last};
       } else {
         cmdLog(`⚠️ 找不到行程「${tripName}」，請加上日期範圍，如 /加入 效文 "KAAA" 7/19~7/21`,'cmd-err');return;
@@ -1974,8 +1979,8 @@ async function execCmd(raw){
     const MEET=['pre','hand','review'];
     if(tripDays.length>0){
       const sorted=tripDays.sort((a,b)=>a.m*31+a.d-(b.m*31+b.d));
-      const firstDt=new Date(2026,sorted[0].m-1,sorted[0].d);
-      const lastDt=new Date(2026,sorted[sorted.length-1].m-1,sorted[sorted.length-1].d);
+      const firstDt=new Date(curYear,sorted[0].m-1,sorted[0].d);
+      const lastDt=new Date(curYear,sorted[sorted.length-1].m-1,sorted[sorted.length-1].d);
       const ws=new Date(firstDt);ws.setDate(ws.getDate()-60);
       const we=new Date(lastDt);we.setDate(we.getDate()+30);
       for(const{m,d,entries}of tripDays){
@@ -2022,12 +2027,12 @@ async function execCmd(raw){
     const dM=rest.match(/(\d+)天/);
     let smo,sda,emo,eda;
     if(rM){smo=parseInt(rM[1]);sda=parseInt(rM[2]);emo=parseInt(rM[3]);eda=parseInt(rM[4]);}
-    else if(sM&&dM){smo=parseInt(sM[1]);sda=parseInt(sM[2]);const ed=new Date(2026,smo-1,sda+parseInt(dM[1])-1);emo=ed.getMonth()+1;eda=ed.getDate();}
+    else if(sM&&dM){smo=parseInt(sM[1]);sda=parseInt(sM[2]);const ed=new Date(curYear,smo-1,sda+parseInt(dM[1])-1);emo=ed.getMonth()+1;eda=ed.getDate();}
     else{cmdLog('⚠️ 請包含日期，如 7/19 2天 或 7/19~7/20','cmd-err');return;}
     const rfg=rest.replace(rM?rM[0]:sM[0],'').replace(dM?dM[0]:'','').trim();
     const ugs=findAllGuides(rfg);
-    let filled=0,cur=new Date(2026,smo-1,sda);
-    const edt=new Date(2026,emo-1,eda);
+    let filled=0,cur=new Date(curYear,smo-1,sda);
+    const edt=new Date(curYear,emo-1,eda);
     // If no guides, store placeholder with dummy key to allow /加入 to find dates
     const guidesToFill = ugs.length > 0 ? ugs : ['__placeholder__'];
     while(cur<=edt){
@@ -2131,7 +2136,7 @@ async function execCmd(raw){
         if(monthM&&parseInt(m)!==parseInt(monthM[1]))return;
         const tk=`${e.text}||${g}`;
         if(!tripInstances[tk])tripInstances[tk]={name:e.text,g,days:[]};
-        tripInstances[tk].days.push(new Date(2026,parseInt(m)-1,parseInt(d)));
+        tripInstances[tk].days.push(new Date(curYear,parseInt(m)-1,parseInt(d)));
       });
     });
     const results=[];
@@ -2163,7 +2168,7 @@ async function execCmd(raw){
     if(rM){
       const sm=parseInt(rM[1]),sd=parseInt(rM[2]),em=parseInt(rM[3]),ed=parseInt(rM[4]);
       const busyG=new Set();
-      let cur=new Date(2026,sm-1,sd);const edt=new Date(2026,em-1,ed);
+      let cur=new Date(curYear,sm-1,sd);const edt=new Date(curYear,em-1,ed);
       while(cur<=edt){
         const m=cur.getMonth()+1,d=cur.getDate();
         guides.forEach(g=>{if((scheduleData[`${m}|${d}|${g}`]||[]).some(e=>BUSY_TYPES.includes(e.type)))busyG.add(g);});
@@ -2240,7 +2245,7 @@ async function execCmd(raw){
     const typeKey=Object.keys(TYPES_MAP).find(t=>cmd.includes(t))||'行程';
     const type=TYPES_MAP[typeKey];
     const tripName=getQuoted(cmd)||(cmd.replace('/批次','').replace(gFound,'').replace(rM[0],'').replace(typeKey,'').trim());
-    let cur=new Date(2026,m1-1,d1),count=0;const edt=new Date(2026,m2-1,d2);
+    let cur=new Date(curYear,m1-1,d1),count=0;const edt=new Date(curYear,m2-1,d2);
     while(cur<=edt){
       const m=cur.getMonth()+1,d=cur.getDate(),k=`${m}|${d}|${gFound}`;
       if(!scheduleData[k])scheduleData[k]=[];
@@ -2290,7 +2295,37 @@ async function execCmd(raw){
 } // end execCmd
 
 
-// ── 行事曆邀請系統 ──
+// ── 年度切換 ──
+const HOL_2026 = {'1/1':'元旦','1/27':'農曆除夕補假','1/28':'農曆除夕','1/29':'春節','1/30':'春節','1/31':'春節','2/1':'春節','2/2':'春節','2/3':'初六補假','2/28':'和平紀念日','3/2':'和平紀念日補假','4/3':'兒童節補假','4/4':'兒童節','4/5':'清明節','5/1':'勞動節','5/31':'端午節','6/1':'端午節補假','9/25':'中秋節補假','9/26':'中秋節','9/27':'教師節','9/28':'教師節補假','10/9':'國慶日補假','10/10':'國慶日','10/26':'光復節補休','12/24':'假期','12/25':'行憲紀念日'};
+const HOL_2027 = {'1/1':'元旦','2/15':'除夕','2/16':'春節','2/17':'春節','2/18':'春節','2/19':'春節','2/20':'春節','2/28':'和平紀念日','3/1':'和平紀念日補假','4/4':'兒童節兼清明節','5/1':'勞動節','5/20':'端午節','9/15':'中秋節','9/16':'教師節補假','9/17':'中秋節補假','10/10':'國慶日','10/11':'國慶日補假','12/25':'行憲紀念日'};
+
+async function switchYear(year){
+  if(curYear===year) return;
+  curYear=year;
+  // Update year buttons
+  document.getElementById('yr2026').style.cssText=`flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid ${year===2026?'#1f5c9e':'#ccc'};background:${year===2026?'#1f5c9e':'#f8f9fc'};color:${year===2026?'#fff':'#666'};cursor:pointer;`;
+  document.getElementById('yr2027').style.cssText=`flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid ${year===2027?'#1f5c9e':'#ccc'};background:${year===2027?'#1f5c9e':'#f8f9fc'};color:${year===2027?'#fff':'#666'};cursor:pointer;`;
+  // Load holidays for this year
+  HOL = year===2027 ? {...HOL_2027} : {...HOL_2026};
+  try{
+    const snap=await getDoc(doc(db,'config',`holidays_${year}`));
+    if(snap.exists()) HOL=snap.data().data||HOL;
+  }catch(e){}
+  // Re-subscribe to schedule data
+  if(unsubSchedule){unsubSchedule();unsubSchedule=null;}
+  scheduleData={};
+  const schedRef=doc(db,'schedule',String(year));
+  unsubSchedule=onSnapshot(schedRef,snap=>{
+    scheduleData=snap.exists()?(snap.data().entries||{}):{};
+    renderSidebar();renderTable();
+    const tripsTab=document.getElementById('tripsTab');
+    if(tripsTab&&tripsTab.style.display!=='none') renderTrips();
+  });
+  curMonth=1;
+  toast(`已切換到 ${year} 年`);
+}
+
+window.switchYear=switchYear;
 const CALENDAR_WEB_APP = 'https://script.google.com/macros/s/AKfycbxjBCxoFsvwZfQJlyOaLXvBw7KpLqUe0iYTDo6v4EWl4oNiDGGscvguTz8wF0uwvMrq/exec';
 let calInviteRecords = {};
 let tripRoles = {}; // {tripName: {teamControl:[], business:[]}}
@@ -2371,7 +2406,7 @@ function openAddGuideModal(tripName){
     const dm=dates.match(/(\d{1,2})\/(\d{1,2})[~～](\d{1,2})\/(\d{1,2})/);
     if(!dm){toast('日期格式錯誤，請輸入如 7/4~7/16');return;}
     const sm=parseInt(dm[1]),sd=parseInt(dm[2]),em=parseInt(dm[3]),ed=parseInt(dm[4]);
-    let cur=new Date(2026,sm-1,sd);const end=new Date(2026,em-1,ed);
+    let cur=new Date(curYear,sm-1,sd);const end=new Date(curYear,em-1,ed);
     while(cur<=end){
       const m=cur.getMonth()+1,d=cur.getDate();
       const k=`${m}|${d}|${g}`;
@@ -2559,8 +2594,8 @@ function openNewTripModal(){
 
     const smo=parseInt(sm[1]),sda=parseInt(sm[2]);
     const emo=parseInt(em[1]),eda=parseInt(em[2]);
-    const startDt=new Date(2026,smo-1,sda);
-    const endDt=new Date(2026,emo-1,eda);
+    const startDt=new Date(curYear,smo-1,sda);
+    const endDt=new Date(curYear,emo-1,eda);
     if(startDt>endDt){toast('出發日期不能晚於結束日期');return;}
 
     const btn=modal.querySelector('#ntConfirm');
@@ -2702,7 +2737,7 @@ window.sendCalendarInvite=async function(tripName,allGuides,meetType,meetDate,me
     let isoDate=meetDate;
     if(meetDate&&!meetDate.includes('-')){
       const[m,d]=meetDate.split('/');
-      isoDate=`2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      isoDate=`${curYear}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     }
 
     await callWebApp('sendCalendar',{tripName,guides:selected,meetType,meetDate:isoDate,meetTime,meetMode:meetMode||'現場',uid});
