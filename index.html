@@ -759,6 +759,9 @@ onAuthStateChanged(auth, async user => {
     showCmdBar();
     loadCalInviteRecords();
     loadTripRoles();
+    // Set initial year button state
+    document.getElementById('yr2026').style.cssText='flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid #1f5c9e;background:#1f5c9e;color:#fff;cursor:pointer;';
+    document.getElementById('yr2027').style.cssText='flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid #ccc;background:#f8f9fc;color:#666;cursor:pointer;';
   } else {
     currentUser = null; isAdmin = false;
     if(unsubSchedule){ unsubSchedule(); unsubSchedule=null; }
@@ -1479,6 +1482,11 @@ window.renderTrips=function(){
 
   document.getElementById('tripsCount').textContent=`共 ${filtered.length} 個行程`;
   const list=document.getElementById('tripsList');
+  const titleEl=document.getElementById('tripYearTitle');
+  if(titleEl) titleEl.textContent=`行程總覽 ${curYear}`;
+  // Also update query year badge
+  const qBadge=document.getElementById('queryYearBadge');
+  if(qBadge) qBadge.textContent=`${curYear} 年`;
   if(!filtered.length){list.innerHTML='<div class="no-results">沒有符合的行程</div>';return;}
 
   list.innerHTML=filtered.map(t=>{
