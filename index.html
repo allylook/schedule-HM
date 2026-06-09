@@ -842,7 +842,7 @@ function setupListeners(){
       }
       saveSnapshot(); await saveSchedule();
       toast(`✅ 地點已設為${newLoc||'未指定'}${newLoc?'，已同步到'+newLoc:''}`);
-      setTimeout(()=>renderTrips(),300);
+      renderTrips();
       return;
     }
     // Guide mode selector
@@ -2800,9 +2800,10 @@ function openAddMeetingModal(tripName, meetType){
       }
     });
     if(added===0){toast('⚠️ 該行程已有此會議記錄');modal.remove();return;}
+    modal.remove();
     saveSnapshot(); await saveSchedule();
     toast(`✅ 已新增「${tripName}」${typeLabel} ${dateStr} ${timeStr}`);
-    modal.remove(); setTimeout(()=>renderTrips(), 500);
+    renderTrips();
   };
 }
 
@@ -2863,7 +2864,7 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
     });
     saveSnapshot(); await saveSchedule();
     toast(`✅ 已更新「${tripName}」${typeLabel}`);
-    modal.remove(); setTimeout(()=>renderTrips(), 500);
+    modal.remove(); renderTrips();
   };
 }
 
