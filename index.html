@@ -3218,6 +3218,115 @@ window.repairAllMeetings = async function(){
   toast(`✅ 修復完成：清除 ${totalRemoved} 筆舊記錄，補齊 ${totalAdded} 筆`);
 };
 
+// -- repair all meetings --
+window.repairAllMeetings = async function(){
+  if(!isAdmin){toast('\u9700\u8981\u7ba1\u7406\u54e1\u6b0a\u9650');return;}
+  const log = document.getElementById('repairLog');
+  log.textContent = '\u4fee\u5fa9\u4e2d...\n';
+
+  const tripNames = new Set();
+  Object.values(scheduleData).forEach(function(arr){
+    arr.forEach(function(e){ if(e.type==='trip'&&e.text) tripNames.add(e.text); });
+  });
+
+  let totalRemoved=0, totalAdded=0;
+  const typeLabel={pre:'\u884c\u524d',hand:'\u4ea4\u5718',review:'\u6aa2\u8a0e'};
+
+  for(const tripName of tripNames){
+    const canonical={pre:null,hand:null,review:null};
+    const votes={pre:new Map(),hand:new Map(),review:new Map()};
+
+    Object.entries(scheduleData).forEach(function([k,arr]){
+      const parts=k.split('|'); if(parts.length<3) return;
+      const g=parts[2];
+      if(g==='\u5927\u6703\u8b70\u5ba4'||g==='\u5c0f\u6703\u8b70\u5ba4') return;
+      arr.forEach(function(e){
+        if(!['pre','hand','review'].includes(e.type)) return;
+        if(!e.text||!e.text.includes(tripName)) return;
+        const vk=parts[0]+'|'+parts[1]+'|'+e.text;
+        votes[e.type].set(vk,(votes[e.type].get(vk)||0)+1);
+      });
+    });
+
+    ['pre','hand','review'].forEach(function(mt){
+      if(votes[mt].size===0) return;
+      let best=null,bestCount=0;
+      votes[mt].forEach(function(count,vk){
+        if(count>bestCount){
+          const p=vk.split('|');
+          best={m:parseInt(p[0]),d:parseInt(p[1]),text:p.slice(2).join('|'),type:mt};
+          bestCount=count;
+        }
+      });
+      canonical[mt]=best;
+    });
+
+    const hasAny=Object.values(canonical).some(function(x){return x;});
+    if(!hasAny) continue;
+
+    // Remove all pre/hand/review for this trip from everyone
+    let removed=0;
+    Object.keys(scheduleData).forEach(function(k){
+      const parts=k.split('|'); if(parts.length<3) return;
+      const before=scheduleData[k].length;
+      scheduleData[k]=scheduleData[k].filter(function(e){
+        if(!['pre','hand','review'].includes(e.type)) return true;
+        if(!e.text) return true;
+        // Remove exact match
+        if(e.text.includes(tripName)) return false;
+        // Remove cross-group pollution: text contains baseName but not full tripName
+        if(/(-G\d+)/.test(tripName)){
+          const base=tripName.replace(/-G\d+$/,'');
+          if(e.text.includes(base)) return false;
+        }
+        return true;
+      });
+      removed+=(before-scheduleData[k].length);
+      if(!scheduleData[k].length) delete scheduleData[k];
+    });
+    totalRemoved+=removed;
+
+    // Collect all current members
+    const allMembers=new Set();
+    Object.entries(scheduleData).forEach(function([k,arr]){
+      const parts=k.split('|'); if(parts.length<3) return;
+      if(parts[2]==='\u5927\u6703\u8b70\u5ba4'||parts[2]==='\u5c0f\u6703\u8b70\u5ba4') return;
+      if(arr.some(function(e){return e.type==='trip'&&e.text===tripName;})) allMembers.add(parts[2]);
+    });
+    const roles=tripRoles[tripName]||{teamControl:[],business:[]};
+    (roles.teamControl||[]).concat(roles.business||[]).forEach(function(g){
+      if(g&&g!=='__placeholder__') allMembers.add(g);
+    });
+
+    // Write correct version to all members
+    let added=0;
+    allMembers.forEach(function(g){
+      ['pre','hand','review'].forEach(function(mt){
+        const me=canonical[mt]; if(!me) return;
+        const k=me.m+'|'+me.d+'|'+g;
+        if(!scheduleData[k])scheduleData[k]=[];
+        if(!scheduleData[k].some(function(e){return e.type===mt&&e.text===me.text;})){
+          scheduleData[k].push({type:mt,text:me.text});
+          added++;
+        }
+      });
+    });
+    totalAdded+=added;
+
+    const summary=['pre','hand','review'].map(function(mt){
+      const me=canonical[mt];
+      return me?(typeLabel[mt]+' '+me.m+'/'+me.d):null;
+    }).filter(Boolean).join(' ');
+    log.textContent+=tripName+': -'+removed+' +'+added+' ('+summary+')\n';
+    log.scrollTop=log.scrollHeight;
+  }
+
+  saveSnapshot(); await saveSchedule();
+  log.textContent+='\n\u2705 \u5b8c\u6210\uff01\u6e05\u9664 '+totalRemoved+' \u7b46\uff0c\u88dc\u9f4a '+totalAdded+' \u7b46';
+  renderTrips();
+  toast('\u2705 \u4fee\u5fa9\u5b8c\u6210');
+};
+
 // ── 通知寄送記錄 ──
 let notifyLogsLoaded = false;
 
