@@ -816,20 +816,21 @@ function setupListeners(){
       if(!dm) return;
       const m=parseInt(dm[1]),d=parseInt(dm[2]);
       const roles2=tripRoles[trip]||{teamControl:[],business:[]};
-      // Find all people with this meeting
+      // Find all people with THIS trip's meeting（用 meetMatchesTrip 避免跨梯次）
       const meetPeople=new Set();
       Object.entries(scheduleData).forEach(([k,v])=>{
         const[km,kd,kg]=k.split('|');
-        if(parseInt(km)===m&&parseInt(kd)===d&&v.some(e=>e.type===mt)){
+        if(kg==='大會議室'||kg==='小會議室') return;
+        if(parseInt(km)===m&&parseInt(kd)===d&&v.some(e=>e.type===mt&&meetMatchesTrip(e.text,trip))){
           meetPeople.add(kg);
         }
       });
-      [...roles2.teamControl,...roles2.business].forEach(g=>meetPeople.add(g));
-      // Update location tag for all
+      [...(roles2.teamControl||[]),...(roles2.business||[])].filter(g=>g&&g!=='__placeholder__').forEach(g=>meetPeople.add(g));
+      // Update location tag for all（只改本行程的會議）
       meetPeople.forEach(g=>{
         const k=`${m}|${d}|${g}`;
         const arr=scheduleData[k]||[];
-        const idx=arr.findIndex(e=>e.type===mt);
+        const idx=arr.findIndex(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
         if(idx>=0){
           let newText=arr[idx].text.replace(/\[(大會議室|小會議室)\]/g,'').trim();
           if(newLoc) newText=newText+` [${newLoc}]`;
@@ -862,15 +863,18 @@ function setupListeners(){
     const dm=date.match(/(\d{1,2})\/(\d{1,2})/);
     if(!dm) return;
     const m=parseInt(dm[1]),d=parseInt(dm[2]);
+    const tripName2=el.dataset.trip;
     const k=`${m}|${d}|${guide}`;
     const arr=(scheduleData[k]||[]).slice();
-    const idx=arr.findIndex(e=>e.type===meetType2);
+    // 只改本行程的會議
+    const idx=arr.findIndex(e=>e.type===meetType2&&(tripName2?meetMatchesTrip(e.text,tripName2):true));
     if(idx>=0){
       const modeTag=newMode==='現場'?'':`[${newMode}]`;
       let newText=arr[idx].text.replace(/\[(線上|回看)\]/g,'').trim();
       if(modeTag) newText=newText+' '+modeTag;
       arr[idx]={...arr[idx],text:newText};
       scheduleData[k]=arr;
+      _skipNextSnapshot=1;
       saveSnapshot(); await saveSchedule();
       const typeLabel=['pre','hand','review'].indexOf(meetType2)>=0?['行前','交團','檢討'][['pre','hand','review'].indexOf(meetType2)]:'';
       toast(`✅ ${guide} ${typeLabel}：${newMode}`);
@@ -2872,23 +2876,31 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
     const nm=parseInt(newDm[1]),nd=parseInt(newDm[2]);
     const modeTag=newMode==='現場'?'':`[${newMode}]`;
     const newText=[newTime,tripName,{pre:'行前',hand:'交團',review:'檢討'}[meetType],modeTag].filter(Boolean).join(' ');
-    // Find all guides + teamControl + business
+    // Find all guides + teamControl + business（排除會議室）
     const tripGuides=new Set();
     Object.entries(scheduleData).forEach(([k,v])=>{
       const parts=k.split('|'); if(parts.length<3) return;
+      if(parts[2]==='大會議室'||parts[2]==='小會議室') return;
       if(v.some(e=>e.type==='trip'&&e.text===tripName)) tripGuides.add(parts[2]);
     });
     const roles5=tripRoles[tripName]||{teamControl:[],business:[]};
-    [...(roles5.teamControl||[]),...(roles5.business||[])].forEach(g=>tripGuides.add(g));
+    [...(roles5.teamControl||[]),...(roles5.business||[])].filter(g=>g&&g!=='__placeholder__').forEach(g=>tripGuides.add(g));
     tripGuides.forEach(g=>{
-      // Remove old
+      // Remove old：必須是「此行程」的會議才刪（用 meetMatchesTrip 比對，避免跨梯次誤刪）
       const oldK=`${om}|${od}|${g}`;
-      if(scheduleData[oldK]) scheduleData[oldK]=scheduleData[oldK].filter(e=>!(e.type===meetType));
+      if(scheduleData[oldK]){
+        scheduleData[oldK]=scheduleData[oldK].filter(e=>!(e.type===meetType&&meetMatchesTrip(e.text,tripName)));
+        if(!scheduleData[oldK].length) delete scheduleData[oldK];
+      }
       // Add new
       const newK=`${nm}|${nd}|${g}`;
       if(!scheduleData[newK])scheduleData[newK]=[];
-      scheduleData[newK].push({type:meetType,text:newText});
+      // 避免重複
+      if(!scheduleData[newK].some(e=>e.type===meetType&&e.text===newText)){
+        scheduleData[newK].push({type:meetType,text:newText});
+      }
     });
+    _skipNextSnapshot=1;
     saveSnapshot(); await saveSchedule();
     toast(`✅ 已更新「${tripName}」${typeLabel}`);
     modal.remove(); renderTrips();
