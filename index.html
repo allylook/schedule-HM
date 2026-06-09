@@ -3025,7 +3025,7 @@ function openAddRoleModal(tripName, role){
 
 // ── 同步行程會議到所有成員 ──
 window.syncTripMeetings = async function(tripName){
-  // 收集所有當前成員（領隊 + 團控 + 業務）
+  // 1. 收集所有當前成員（領隊 + 團控 + 業務）
   const allMembers=new Set();
   Object.entries(scheduleData).forEach(([k,v])=>{
     const parts=k.split('|'); if(parts.length<3) return;
@@ -3035,37 +3035,63 @@ window.syncTripMeetings = async function(tripName){
   const roles=tripRoles[tripName]||{teamControl:[],business:[]};
   [...(roles.teamControl||[]),...(roles.business||[])].filter(g=>g&&g!=='__placeholder__').forEach(g=>allMembers.add(g));
 
-  // 收集現有的三種會議資料（從任意成員身上取樣）
-  const meetEntries={pre:null,hand:null,review:null};
-  Object.entries(scheduleData).forEach(([k,v])=>{
-    const parts=k.split('|'); if(parts.length<3) return;
-    ['pre','hand','review'].forEach(mt=>{
-      if(!meetEntries[mt]){
-        const e=v.find(x=>x.type===mt&&meetMatchesTrip(x.text,tripName));
-        if(e) meetEntries[mt]={m:parseInt(parts[0]),d:parseInt(parts[1]),text:e.text,type:mt};
+  // 2. 對每種會議類型，統計所有候選版本的票數，選出最多人有的那筆
+  const bestEntry={pre:null,hand:null,review:null};
+  ['pre','hand','review'].forEach(mt=>{
+    const votes=new Map(); // key = "m|d|text" -> count
+    Object.entries(scheduleData).forEach(([k,v])=>{
+      const parts=k.split('|'); if(parts.length<3) return;
+      const g=parts[2];
+      if(g==='大會議室'||g==='小會議室') return;
+      v.filter(e=>e.type===mt&&meetMatchesTrip(e.text,tripName)).forEach(e=>{
+        const vk=`${parts[0]}|${parts[1]}|${e.text}`;
+        votes.set(vk,(votes.get(vk)||0)+1);
+      });
+    });
+    if(votes.size===0) return;
+    // 選票數最多的（同票取日期最新的）
+    let best=null,bestCount=0;
+    votes.forEach((count,vk)=>{
+      const [m,d,text]=vk.split('|');
+      if(count>bestCount||(count===bestCount&&best&&(parseInt(m)*100+parseInt(d))>(best.m*100+best.d))){
+        best={m:parseInt(m),d:parseInt(d),text,type:mt};
+        bestCount=count;
       }
     });
+    bestEntry[mt]=best;
   });
 
-  const hasMeets=Object.values(meetEntries).some(x=>x!==null);
+  const hasMeets=Object.values(bestEntry).some(x=>x!==null);
   if(!hasMeets){toast(`⚠️「${tripName}」尚無行前/交團/檢討記錄`);return;}
 
+  // 3. 清除所有成員（含會議室）身上此行程的舊會議記錄
+  Object.keys(scheduleData).forEach(k=>{
+    const parts=k.split('|'); if(parts.length<3) return;
+    scheduleData[k]=scheduleData[k].filter(e=>
+      !(['pre','hand','review'].includes(e.type)&&meetMatchesTrip(e.text,tripName))
+    );
+    if(!scheduleData[k].length) delete scheduleData[k];
+  });
+
+  // 4. 統一寫入正確版本到所有成員
   let added=0;
   allMembers.forEach(g=>{
     ['pre','hand','review'].forEach(mt=>{
-      const me=meetEntries[mt]; if(!me) return;
+      const me=bestEntry[mt]; if(!me) return;
       const k=`${me.m}|${me.d}|${g}`;
       if(!scheduleData[k])scheduleData[k]=[];
-      if(!scheduleData[k].some(e=>e.type===mt&&meetMatchesTrip(e.text,tripName))){
-        scheduleData[k].push({type:mt,text:me.text});
-        added++;
-      }
+      scheduleData[k].push({type:mt,text:me.text});
+      added++;
     });
   });
 
-  if(added===0){toast(`✅「${tripName}」會議已是最新，無需補齊`);return;}
   saveSnapshot(); await saveSchedule();
-  toast(`✅ 已補齊「${tripName}」${added} 筆會議記錄`);
+  const summary=['pre','hand','review'].map(mt=>{
+    const me=bestEntry[mt];
+    if(!me) return null;
+    return `${({pre:'行前',hand:'交團',review:'檢討'})[mt]} ${me.m}/${me.d}`;
+  }).filter(Boolean).join('、');
+  toast(`✅「${tripName}」已同步：${summary}（共 ${added} 筆）`);
   renderTrips();
 };
 
