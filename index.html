@@ -1770,6 +1770,7 @@ window.renderTrips=function(){
       : guidesHtml;
 
     // Add meeting buttons (admin only)
+    const hasSomeMeet=Object.values(t.meetingData).some(arr=>arr.length>0);
     const addMeetHtml=isAdmin?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${['pre','hand','review'].map(mt=>{
       const label={pre:'行前',hand:'交團',review:'檢討'}[mt];
       if(t.meetingData[mt].length>0) return '';
@@ -1777,9 +1778,8 @@ window.renderTrips=function(){
         data-action="add-meeting"
         data-trip="${tripNameEsc}"
         data-type="${mt}"
-        data-guides="${[...new Set([...t.guideList,...(tripRoles[t.name]?.teamControl||[]),...(tripRoles[t.name]?.business||[])])].filter(g=>g!=='大會議室'&&g!=='小會議室').join(',')}"
         >＋ 新增${label}</button>`;
-    }).join('')}</div>`:'';
+    }).join('')}${hasSomeMeet?`<button onclick="syncTripMeetings('${t.name.replace(/'/g,"\\'")}')" style="font-size:11px;padding:3px 10px;border-radius:4px;border:1px dashed #2e7d32;background:#f1f8e9;color:#2e7d32;cursor:pointer;font-family:inherit;">🔄 同步會議</button>`:''}</div>`:'';
 
     // Team control and business chips
     const roles = tripRoles[t.name] || {teamControl:[], business:[]};
@@ -2791,18 +2791,15 @@ function openAddMeetingModal(tripName, meetType, passedGuides){
     if(!dm){toast('日期格式錯誤');return;}
     const m=parseInt(dm[1]),d=parseInt(dm[2]);
 
-    // Use passed guides (from trip card) or fall back to scheduleData scan
+    // Always collect all current members from scheduleData + tripRoles (never rely on passedGuides)
     const tripGuides=new Set();
-    if(passedGuides){
-      passedGuides.split(',').filter(g=>g&&g!=='__placeholder__').forEach(g=>tripGuides.add(g));
-    } else {
-      Object.entries(scheduleData).forEach(([k,v])=>{
-        const parts2=k.split('|'); if(parts2.length<3) return;
-        if(v.some(e=>e.type==='trip'&&e.text===tripName)) tripGuides.add(parts2[2]);
-      });
-      const roles4=tripRoles[tripName]||{teamControl:[],business:[]};
-      [...(roles4.teamControl||[]),...(roles4.business||[])].forEach(g=>tripGuides.add(g));
-    }
+    Object.entries(scheduleData).forEach(([k,v])=>{
+      const parts2=k.split('|'); if(parts2.length<3) return;
+      if(parts2[2]==='大會議室'||parts2[2]==='小會議室') return;
+      if(v.some(e=>e.type==='trip'&&e.text===tripName)) tripGuides.add(parts2[2]);
+    });
+    const roles4=tripRoles[tripName]||{teamControl:[],business:[]};
+    [...(roles4.teamControl||[]),...(roles4.business||[])].filter(g=>g&&g!=='__placeholder__').forEach(g=>tripGuides.add(g));
     const modeTag=mode==='現場'?'':`[${mode}]`;
     const text=[timeStr,tripName,typeLabel,modeTag].filter(Boolean).join(' ');
     let added=0;
@@ -3025,6 +3022,52 @@ function openAddRoleModal(tripName, role){
     modal.remove(); renderTrips();
   };
 }
+
+// ── 同步行程會議到所有成員 ──
+window.syncTripMeetings = async function(tripName){
+  // 收集所有當前成員（領隊 + 團控 + 業務）
+  const allMembers=new Set();
+  Object.entries(scheduleData).forEach(([k,v])=>{
+    const parts=k.split('|'); if(parts.length<3) return;
+    if(parts[2]==='大會議室'||parts[2]==='小會議室') return;
+    if(v.some(e=>e.type==='trip'&&e.text===tripName)) allMembers.add(parts[2]);
+  });
+  const roles=tripRoles[tripName]||{teamControl:[],business:[]};
+  [...(roles.teamControl||[]),...(roles.business||[])].filter(g=>g&&g!=='__placeholder__').forEach(g=>allMembers.add(g));
+
+  // 收集現有的三種會議資料（從任意成員身上取樣）
+  const meetEntries={pre:null,hand:null,review:null};
+  Object.entries(scheduleData).forEach(([k,v])=>{
+    const parts=k.split('|'); if(parts.length<3) return;
+    ['pre','hand','review'].forEach(mt=>{
+      if(!meetEntries[mt]){
+        const e=v.find(x=>x.type===mt&&meetMatchesTrip(x.text,tripName));
+        if(e) meetEntries[mt]={m:parseInt(parts[0]),d:parseInt(parts[1]),text:e.text,type:mt};
+      }
+    });
+  });
+
+  const hasMeets=Object.values(meetEntries).some(x=>x!==null);
+  if(!hasMeets){toast(`⚠️「${tripName}」尚無行前/交團/檢討記錄`);return;}
+
+  let added=0;
+  allMembers.forEach(g=>{
+    ['pre','hand','review'].forEach(mt=>{
+      const me=meetEntries[mt]; if(!me) return;
+      const k=`${me.m}|${me.d}|${g}`;
+      if(!scheduleData[k])scheduleData[k]=[];
+      if(!scheduleData[k].some(e=>e.type===mt&&meetMatchesTrip(e.text,tripName))){
+        scheduleData[k].push({type:mt,text:me.text});
+        added++;
+      }
+    });
+  });
+
+  if(added===0){toast(`✅「${tripName}」會議已是最新，無需補齊`);return;}
+  saveSnapshot(); await saveSchedule();
+  toast(`✅ 已補齊「${tripName}」${added} 筆會議記錄`);
+  renderTrips();
+};
 
 // ── 通知寄送記錄 ──
 let notifyLogsLoaded = false;
