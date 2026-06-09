@@ -893,6 +893,46 @@ function setupListeners(){
     if(action==='add-guide') openAddGuideModal(trip);
     if(action==='add-meeting') openAddMeetingModal(trip, el.dataset.type, el.dataset.guides);
     if(action==='edit-meeting') openEditMeetingModal(trip, el.dataset.type, el.dataset.date, el.dataset.time, el.dataset.mode);
+    if(action==='del-meeting'){
+      const mt=el.dataset.type;
+      const m=parseInt(el.dataset.m), d=parseInt(el.dataset.d);
+      const time=el.dataset.time||'';
+      const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[mt];
+      if(!confirm(`確定刪除「${trip}」${typeLabel} ${m}/${d}${time?' '+time:''}？\n會清除所有相關成員班表的此筆會議記錄。`)) return;
+      let removed=0;
+      // 1. 刪除 scheduleData 裡所有成員身上符合條件的會議
+      Object.keys(scheduleData).forEach(k=>{
+        const parts=k.split('|'); if(parts.length<3) return;
+        const km=parseInt(parts[0]), kd=parseInt(parts[1]);
+        if(km!==m||kd!==d) return;
+        const before=scheduleData[k].length;
+        scheduleData[k]=scheduleData[k].filter(e=>{
+          if(e.type!==mt) return true;
+          // 必須是這個行程的會議（精確比對）
+          if(!e.text||!e.text.includes(trip)) return true;
+          // 如果有指定時間，要相符（含正規化）
+          if(time){
+            const tm=e.text.match(/(\d{1,2}:\d{2})/)||(e.text.match(/(\d{4})/)?[null,e.text.match(/(\d{4})/)[1].replace(/(\d{2})(\d{2})/,'$1:$2')]:null);
+            const eTime=tm?tm[1]:'';
+            if(eTime!==time) return true;
+          }
+          return false;
+        });
+        removed+=(before-scheduleData[k].length);
+        if(!scheduleData[k].length) delete scheduleData[k];
+      });
+      // 2. 同時清除行事曆發送記錄（如果存在）
+      const recKey=`${trip}|${mt}`;
+      if(calInviteRecords[recKey]){
+        delete calInviteRecords[recKey];
+        await saveCalInviteRecords();
+      }
+      if(removed===0){toast('⚠️ 找不到符合的會議記錄');return;}
+      saveSnapshot(); await saveSchedule();
+      toast(`✅ 已刪除「${trip}」${typeLabel}（清除 ${removed} 筆班表記錄）`);
+      renderTrips();
+      return;
+    }
     if(action==='add-role') openAddRoleModal(trip, el.dataset.role);
     if(action==='remove-role'){
       const role=el.dataset.role;
@@ -1700,7 +1740,8 @@ window.renderTrips=function(){
           : grp.guides.map(g=>`${g.guide}:${g.mode}`).join('、');
         const display=[`${grp.m}/${grp.d}`,grp.timeStr,modes.length>1?`（${modeText}）`:modeText].filter(Boolean).join(' ');
         const loc=items.find(item=>item.text.includes('[大會議室]'))?'🏢大':items.find(item=>item.text.includes('[小會議室]'))?'🏢小':'';
-        return `<span class="meet-badge ${mt}">${label} ${display}${loc?' '+loc:''}</span>`;
+        const delBtn=isAdmin?`<span style="cursor:pointer;color:#c62828;margin-left:4px;font-weight:bold;" data-action="del-meeting" data-trip="${t.name.replace(/"/g,'&quot;')}" data-type="${mt}" data-m="${grp.m}" data-d="${grp.d}" data-time="${grp.timeStr}" title="刪除此筆會議">×</span>`:'';
+        return `<span class="meet-badge ${mt}">${label} ${display}${loc?' '+loc:''}${delBtn}</span>`;
       }).join('');
       // Calendar button (admin only)
       const firstItem=items[0];
