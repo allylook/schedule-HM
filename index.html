@@ -2803,6 +2803,7 @@ function openAddMeetingModal(tripName, meetType, passedGuides){
       const roles4=tripRoles[tripName]||{teamControl:[],business:[]};
       [...(roles4.teamControl||[]),...(roles4.business||[])].forEach(g=>tripGuides.add(g));
     }
+    console.log('新增會議 tripGuides:', [...tripGuides], 'passedGuides:', passedGuides);
     const modeTag=mode==='現場'?'':`[${mode}]`;
     const text=[timeStr,tripName,typeLabel,modeTag].filter(Boolean).join(' ');
     let added=0;
