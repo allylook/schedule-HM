@@ -1566,19 +1566,22 @@ const TRIP_ALIAS = {
   'EBC': 'EBC',
 };
 function meetMatchesTrip(meetText, tripName){
-  if(!meetText) return false;
-  // 精確比對優先
-  if(meetText.includes(tripName)) return true;
-  for(const [old, newName] of Object.entries(TRIP_ALIAS)){
-    if(meetText.includes(old)&&(newName===tripName||tripName.includes(newName)||newName.includes(tripName.replace(/-G\d+$/,'')))){
-      return true;
-    }
+  if(!meetText||!tripName) return false;
+  // 從會議文字抽出實際的行程名段落來精確比對
+  // 會議格式：「14:00 行程名 行前 [線上]」或「14:00 行程名 行前」等
+  // 移除前綴時間（HH:MM 或 HHMM）
+  let s=meetText.replace(/^\d{1,2}:?\d{2}\s+/,'');
+  // 移除尾端的會議類型和標籤
+  s=s.replace(/\s+(行前|交團|檢討)(\s*\[.*?\])*\s*$/,'').trim();
+  // 移除中間或尾端的標籤（[線上][大會議室]等）
+  s=s.replace(/\s*\[[^\]]+\]/g,'').trim();
+  // 此時 s 應該就是純行程名 → 精確比對
+  if(s===tripName) return true;
+  // 處理 TRIP_ALIAS：別名映射
+  for(const [alias, canonical] of Object.entries(TRIP_ALIAS)){
+    if(s===alias && canonical===tripName) return true;
+    if(s===tripName && canonical===alias) return true;
   }
-  // 有梯次編號（-G數字、-梯、-第）的行程禁止 baseName 模糊比對
-  // 避免 TMB-G5 撈到 TMB-G1/G2 的會議
-  if(/(-G\d+|-梯\d*|-第\d+)/i.test(tripName)) return false;
-  const baseName=tripName.replace(/-G\d+$/,'');
-  if(baseName.length>=2&&meetText.includes(baseName)) return true;
   return false;
 }
 
