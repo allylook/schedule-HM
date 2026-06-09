@@ -2803,7 +2803,6 @@ function openAddMeetingModal(tripName, meetType, passedGuides){
       const roles4=tripRoles[tripName]||{teamControl:[],business:[]};
       [...(roles4.teamControl||[]),...(roles4.business||[])].forEach(g=>tripGuides.add(g));
     }
-    console.log('新增會議 tripGuides:', [...tripGuides], 'passedGuides:', passedGuides);
     const modeTag=mode==='現場'?'':`[${mode}]`;
     const text=[timeStr,tripName,typeLabel,modeTag].filter(Boolean).join(' ');
     let added=0;
@@ -2811,13 +2810,11 @@ function openAddMeetingModal(tripName, meetType, passedGuides){
       const k=`${m}|${d}|${g}`;
       if(!scheduleData[k])scheduleData[k]=[];
       const existing=scheduleData[k].some(e=>e.type===meetType);
-      console.log(`${k}: existing=${existing}`, scheduleData[k]);
       if(!existing){
         scheduleData[k].push({type:meetType,text});
         added++;
       }
     });
-    console.log('added:', added, 'text:', text);
     if(added===0){toast('⚠️ 該行程已有此會議記錄');modal.remove();return;}
     modal.remove();
     saveSnapshot(); await saveSchedule();
