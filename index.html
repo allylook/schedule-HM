@@ -1561,8 +1561,13 @@ function meetMatchesTrip(meetText, tripName){
       return true;
     }
   }
-  const baseName=tripName.replace(/-G\d+$/,'');
-  if(baseName.length>=2&&meetText.includes(baseName)) return true;
+  // 只有不含梯次編號（-G\d+）的行程才做 baseName 模糊比對
+  // 避免 TMB-G5 去撈到 TMB-G1/G2/G3 的會議
+  const hasGroupSuffix=/(-G\d+|-梯)/i.test(tripName);
+  if(!hasGroupSuffix){
+    const baseName=tripName.replace(/-G\d+$/,'');
+    if(baseName.length>=2&&meetText.includes(baseName)) return true;
+  }
   return false;
 }
 
