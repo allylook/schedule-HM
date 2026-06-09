@@ -884,7 +884,7 @@ function setupListeners(){
     }
     if(action==='rename-trip') openRenameTripModal(trip);
     if(action==='add-guide') openAddGuideModal(trip);
-    if(action==='add-meeting') openAddMeetingModal(trip, el.dataset.type);
+    if(action==='add-meeting') openAddMeetingModal(trip, el.dataset.type, el.dataset.guides);
     if(action==='edit-meeting') openEditMeetingModal(trip, el.dataset.type, el.dataset.date, el.dataset.time, el.dataset.mode);
     if(action==='add-role') openAddRoleModal(trip, el.dataset.role);
     if(action==='remove-role'){
@@ -1771,7 +1771,12 @@ window.renderTrips=function(){
     const addMeetHtml=isAdmin?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${['pre','hand','review'].map(mt=>{
       const label={pre:'行前',hand:'交團',review:'檢討'}[mt];
       if(t.meetingData[mt].length>0) return '';
-      return `<button style="font-size:11px;padding:3px 10px;border-radius:4px;border:1px dashed #1f5c9e;background:#f0f5ff;color:#1f5c9e;cursor:pointer;font-family:inherit;" data-action="add-meeting" data-trip="${tripNameEsc}" data-type="${mt}">＋ 新增${label}</button>`;
+      return `<button style="font-size:11px;padding:3px 10px;border-radius:4px;border:1px dashed #1f5c9e;background:#f0f5ff;color:#1f5c9e;cursor:pointer;font-family:inherit;"
+        data-action="add-meeting"
+        data-trip="${tripNameEsc}"
+        data-type="${mt}"
+        data-guides="${[...new Set([...t.guideList,...(tripRoles[t.name]?.teamControl||[]),...(tripRoles[t.name]?.business||[])])].filter(g=>g!=='大會議室'&&g!=='小會議室').join(',')}"
+        >＋ 新增${label}</button>`;
     }).join('')}</div>`:'';
 
     // Team control and business chips
@@ -2751,13 +2756,16 @@ function openAddGuideModal(tripName){
 }
 
 
-function openAddMeetingModal(tripName, meetType){
+function openAddMeetingModal(tripName, meetType, passedGuides){
   const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[meetType];
   const modal=document.createElement('div');
   modal.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;max-height:90vh;overflow-y:auto;';
   modal.className='trip-modal';
   modal.innerHTML=`
-    <h4 style="margin:0 0 16px;color:#1f5c9e;">新增「${tripName}」${typeLabel}</h4>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h4 style="margin:0;color:#1f5c9e;">新增「${tripName}」${typeLabel}</h4>
+      <span onclick="this.closest('.trip-modal').remove()" style="cursor:pointer;font-size:20px;color:var(--text3);">×</span>
+    </div>
     <div style="display:grid;gap:10px;margin-bottom:16px;">
       <div><label style="font-size:12px;color:var(--text3);">日期（格式：7/3）</label>
         <input type="text" id="amDate" placeholder="例：7/3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-top:4px;box-sizing:border-box;"></div>
@@ -2769,8 +2777,8 @@ function openAddMeetingModal(tripName, meetType){
         </select></div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button onclick="this.closest('.trip-modal').remove()" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;">取消</button>
-      <button id="amConfirm" style="padding:8px 16px;background:#1f5c9e;color:#fff;border:none;border-radius:var(--radius);cursor:pointer;">新增</button>
+      <button onclick="this.closest('.trip-modal').remove()" style="padding:8px 16px;border:1px solid var(--border);background:#f8f9fc;border-radius:var(--radius);cursor:pointer;font-family:inherit;">取消</button>
+      <button id="amConfirm" style="padding:8px 16px;background:#1f5c9e;color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:inherit;">新增</button>
     </div>`;
   document.body.appendChild(modal);
   modal.querySelector('#amConfirm').onclick=async()=>{
@@ -2780,14 +2788,19 @@ function openAddMeetingModal(tripName, meetType){
     const dm=dateStr.match(/(\d{1,2})\/(\d{1,2})/);
     if(!dm){toast('日期格式錯誤');return;}
     const m=parseInt(dm[1]),d=parseInt(dm[2]);
-    // Find trip guides + teamControl + business
+
+    // Use passed guides (from trip card) or fall back to scheduleData scan
     const tripGuides=new Set();
-    Object.entries(scheduleData).forEach(([k,v])=>{
-      const parts2=k.split('|'); if(parts2.length<3) return;
-      if(v.some(e=>e.type==='trip'&&e.text===tripName)) tripGuides.add(parts2[2]);
-    });
-    const roles4=tripRoles[tripName]||{teamControl:[],business:[]};
-    [...(roles4.teamControl||[]),...(roles4.business||[])].forEach(g=>tripGuides.add(g));
+    if(passedGuides){
+      passedGuides.split(',').filter(Boolean).forEach(g=>tripGuides.add(g));
+    } else {
+      Object.entries(scheduleData).forEach(([k,v])=>{
+        const parts2=k.split('|'); if(parts2.length<3) return;
+        if(v.some(e=>e.type==='trip'&&e.text===tripName)) tripGuides.add(parts2[2]);
+      });
+      const roles4=tripRoles[tripName]||{teamControl:[],business:[]};
+      [...(roles4.teamControl||[]),...(roles4.business||[])].forEach(g=>tripGuides.add(g));
+    }
     const modeTag=mode==='現場'?'':`[${mode}]`;
     const text=[timeStr,tripName,typeLabel,modeTag].filter(Boolean).join(' ');
     let added=0;
