@@ -2810,11 +2810,14 @@ function openAddMeetingModal(tripName, meetType, passedGuides){
     tripGuides.forEach(g=>{
       const k=`${m}|${d}|${g}`;
       if(!scheduleData[k])scheduleData[k]=[];
-      if(!scheduleData[k].some(e=>e.type===meetType)){
+      const existing=scheduleData[k].some(e=>e.type===meetType);
+      console.log(`${k}: existing=${existing}`, scheduleData[k]);
+      if(!existing){
         scheduleData[k].push({type:meetType,text});
         added++;
       }
     });
+    console.log('added:', added, 'text:', text);
     if(added===0){toast('⚠️ 該行程已有此會議記錄');modal.remove();return;}
     modal.remove();
     saveSnapshot(); await saveSchedule();
