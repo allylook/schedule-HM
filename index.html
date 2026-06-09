@@ -1607,11 +1607,13 @@ window.renderTrips=function(){
     const first=t.days[0],last=t.days[t.days.length-1];
     t.startM=first.m;t.startD=first.d;t.endM=last.m;t.endD=last.d;
     t.totalDays=[...new Set(t.days.map(d=>`${d.m}/${d.d}`))].length;
-    t.guideList=[...t.guides];
+    t.guideList=[...t.guides].filter(g=>g!=='__placeholder__');
     const firstDt=new Date(curYear,first.m-1,first.d);
     const lastDt=new Date(curYear,last.m-1,last.d);
     t.meetingData={pre:[],hand:[],review:[]};
-    t.guideList.forEach(g=>{
+    const roles6=tripRoles[t.name]||{teamControl:[],business:[]};
+    const allMeetPeople=[...new Set([...t.guideList,...(roles6.teamControl||[]),...(roles6.business||[])])];
+    allMeetPeople.forEach(g=>{
       const gm=meetingsByGuide[g]||[];
       ['pre','hand','review'].forEach(mt=>{
         gm.filter(m=>{
@@ -2792,7 +2794,7 @@ function openAddMeetingModal(tripName, meetType, passedGuides){
     // Use passed guides (from trip card) or fall back to scheduleData scan
     const tripGuides=new Set();
     if(passedGuides){
-      passedGuides.split(',').filter(Boolean).forEach(g=>tripGuides.add(g));
+      passedGuides.split(',').filter(g=>g&&g!=='__placeholder__').forEach(g=>tripGuides.add(g));
     } else {
       Object.entries(scheduleData).forEach(([k,v])=>{
         const parts2=k.split('|'); if(parts2.length<3) return;
