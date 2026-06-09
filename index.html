@@ -883,7 +883,9 @@ function setupListeners(){
       removeTripGuide(trip, guide);
     }
     if(action==='rename-trip') openRenameTripModal(trip);
+    if(action==='add-guide') openAddGuideModal(trip);
     if(action==='add-meeting') openAddMeetingModal(trip, el.dataset.type);
+    if(action==='edit-meeting') openEditMeetingModal(trip, el.dataset.type, el.dataset.date, el.dataset.time, el.dataset.mode);
     if(action==='add-role') openAddRoleModal(trip, el.dataset.role);
     if(action==='remove-role'){
       const role=el.dataset.role;
