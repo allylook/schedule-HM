@@ -462,8 +462,8 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
           </div>
           <div id="notifyLogArea" style="display:none;margin-top:12px;"></div>
         </div>
-        <div class="q-card" style="grid-column:1/-1;">
-          <h4 style="margin:0 0 10px;">🛠️ 資料修復工具（管理員）</h4>
+        <div class="q-card" id="repairToolsCard" style="grid-column:1/-1;display:none;">
+          <h4 style="margin:0 0 10px;">🛠️ 資料修復工具（限擁有者）</h4>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button onclick="diagnoseOrphanMeetings()" style="padding:6px 16px;background:#1976d2;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;">🔍 診斷孤兒會議</button>
             <button onclick="repairAllMeetings()" style="padding:6px 16px;background:#e53935;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;">🔧 修復全部行程會議資料</button>
@@ -780,6 +780,9 @@ onAuthStateChanged(auth, async user => {
       const oldBtn=document.getElementById('yr2026');
       if(oldBtn) oldBtn.style.display='none';
     }
+    // 資料修復工具：只有 owner 可見
+    const repairCard=document.getElementById('repairToolsCard');
+    if(repairCard) repairCard.style.display = isOwner ? '' : 'none';
 
     // 如果是 viewer（待審核）顯示等待畫面
     if(userRole === 'viewer'){
@@ -3352,7 +3355,7 @@ window.deleteMeeting = async function(trip, mt, m, d, time){
 
 // -- diagnose orphan meetings --
 window.diagnoseOrphanMeetings = async function(){
-  if(!isAdmin){toast('需要管理員權限');return;}
+  if(!isOwner){toast('🔒 此功能僅限擁有者使用');return;}
   const log = document.getElementById('repairLog');
   log.innerHTML = '<div>掃描中...</div>';
 
@@ -3434,6 +3437,7 @@ window.diagnoseOrphanMeetings = async function(){
 };
 
 window.applyOrphanFix = async function(count){
+  if(!isOwner){toast('🔒 此功能僅限擁有者使用');return;}
   const orphans = window._currentOrphans || [];
   if(!orphans.length){toast('無待處理記錄');return;}
   const typeLabel={pre:'行前',hand:'交團',review:'檢討'};
@@ -3480,7 +3484,7 @@ window.applyOrphanFix = async function(count){
 
 // -- repair all meetings --
 window.repairAllMeetings = async function(){
-  if(!isAdmin){toast('\u9700\u8981\u7ba1\u7406\u54e1\u6b0a\u9650');return;}
+  if(!isOwner){toast('🔒 此功能僅限擁有者使用');return;}
   const log = document.getElementById('repairLog');
   log.textContent = '\u4fee\u5fa9\u4e2d...\n';
 
