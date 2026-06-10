@@ -328,8 +328,9 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
     <div id="scheduleTab">
       <div class="left-panel">
         <div style="display:flex;gap:6px;margin-bottom:10px;">
-          <button id="yr2026" onclick="switchYear(2026)" style="flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid #1f5c9e;background:#1f5c9e;color:#fff;cursor:pointer;">2026</button>
-          <button id="yr2027" onclick="switchYear(2027)" style="flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid #ccc;background:#f8f9fc;color:#666;cursor:pointer;">2027</button>
+          <button id="yr2026" onclick="switchYear('2026')" style="flex:1;padding:5px;font-size:12px;font-weight:600;border-radius:6px;border:2px solid #999;background:#f8f9fc;color:#666;cursor:pointer;" title="舊版 2026 (唯讀)">2026🔒</button>
+          <button id="yr2026new" onclick="switchYear('2026-new')" style="flex:1;padding:5px;font-size:12px;font-weight:600;border-radius:6px;border:2px solid #1f5c9e;background:#1f5c9e;color:#fff;cursor:pointer;" title="新版 2026 (可編輯)">2026 ✨</button>
+          <button id="yr2027" onclick="switchYear('2027')" style="flex:1;padding:5px;font-size:12px;font-weight:600;border-radius:6px;border:2px solid #ccc;background:#f8f9fc;color:#666;cursor:pointer;">2027</button>
         </div>
         <div class="panel-title">月份</div>
         <div class="month-list" id="mlist"></div>
@@ -720,6 +721,8 @@ const TYPES = {
 const SINGLE = ['trip','early','late','leave'];
 
 let curYear = 2026;
+let dataKey = '2026-new'; // Firestore key for schedule data (預設新版)
+let isReadOnly = false; // 切到舊版時為 true
 let curMonth = 7;
 let visibleGuides = new Set(); // empty = show all
 let showPastMonths = false;
@@ -788,9 +791,20 @@ onAuthStateChanged(auth, async user => {
     showCmdBar();
     loadCalInviteRecords();
     loadTripRoles();
-    // Set initial year button state
-    document.getElementById('yr2026').style.cssText='flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid #1f5c9e;background:#1f5c9e;color:#fff;cursor:pointer;';
-    document.getElementById('yr2027').style.cssText='flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid #ccc;background:#f8f9fc;color:#666;cursor:pointer;';
+    // 預設新版 2026 按鈕為高亮，舊版灰色
+    // (按鈕初始狀態已在 HTML 設定好，這裡確認當前 dataKey 對應的初始化)
+    if(dataKey==='2026-new'){
+      try{
+        const snap=await getDoc(doc(db,'schedule','2026-new'));
+        if(!snap.exists() && isAdmin){
+          setTimeout(()=>{
+            if(confirm('🆕 偵測到新版 2026 還沒有資料\n要從舊版 2026 匯入嗎？\n（會保留行程/請假/提早/延回，自動移除所有行前/交團/檢討記錄）')){
+              initNewSchedule2026();
+            }
+          }, 500);
+        }
+      }catch(e){console.error(e);}
+    }
   } else {
     currentUser = null; isAdmin = false;
     if(unsubSchedule){ unsubSchedule(); unsubSchedule=null; }
@@ -956,7 +970,7 @@ function setupListeners(){
     renderSidebar(); renderTable(); updateQueryGuideSelect();
   });
   // Schedule
-  const schedRef = doc(db,'schedule',String(curYear));
+  const schedRef = doc(db,'schedule',dataKey);
   unsubSchedule = onSnapshot(schedRef, snap => {
     if(_skipNextSnapshot>0){ _skipNextSnapshot--; return; }
     scheduleData = snap.exists() ? (snap.data().entries||{}) : {};
@@ -968,7 +982,10 @@ function setupListeners(){
 }
 
 async function saveGuides(){ await setDoc(doc(db,'config','guides'),{list:guides}); }
-async function saveSchedule(){ await setDoc(doc(db,'schedule',String(curYear)),{entries:scheduleData}); }
+async function saveSchedule(){
+  if(isReadOnly){toast('⚠️ 此為唯讀版本，不可修改');return;}
+  await setDoc(doc(db,'schedule',dataKey),{entries:scheduleData});
+}
 
 // ── Can Edit ──
 function canEdit(g){
@@ -2561,39 +2578,109 @@ window.openGuideFilterModal=openGuideFilterModal;
 const HOL_2026 = {'1/1':'元旦','1/27':'農曆除夕補假','1/28':'農曆除夕','1/29':'春節','1/30':'春節','1/31':'春節','2/1':'春節','2/2':'春節','2/3':'初六補假','2/28':'和平紀念日','3/2':'和平紀念日補假','4/3':'兒童節補假','4/4':'兒童節','4/5':'清明節','5/1':'勞動節','5/31':'端午節','6/1':'端午節補假','9/25':'中秋節補假','9/26':'中秋節','9/27':'教師節','9/28':'教師節補假','10/9':'國慶日補假','10/10':'國慶日','10/26':'光復節補休','12/24':'假期','12/25':'行憲紀念日'};
 const HOL_2027 = {'1/1':'元旦','2/15':'除夕','2/16':'春節','2/17':'春節','2/18':'春節','2/19':'春節','2/20':'春節','2/28':'和平紀念日','3/1':'和平紀念日補假','4/4':'兒童節兼清明節','5/1':'勞動節','5/20':'端午節','9/15':'中秋節','9/16':'教師節補假','9/17':'中秋節補假','10/10':'國慶日','10/11':'國慶日補假','12/25':'行憲紀念日'};
 
-async function switchYear(year){
-  if(curYear===year) return;
-  curYear=year;
-  // Update year buttons
-  document.getElementById('yr2026').style.cssText=`flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid ${year===2026?'#1f5c9e':'#ccc'};background:${year===2026?'#1f5c9e':'#f8f9fc'};color:${year===2026?'#fff':'#666'};cursor:pointer;`;
-  document.getElementById('yr2027').style.cssText=`flex:1;padding:5px;font-size:13px;font-weight:600;border-radius:6px;border:2px solid ${year===2027?'#1f5c9e':'#ccc'};background:${year===2027?'#1f5c9e':'#f8f9fc'};color:${year===2027?'#fff':'#666'};cursor:pointer;`;
-  // Load holidays for this year
-  HOL = year===2027 ? {...HOL_2027} : {...HOL_2026};
+async function switchYear(yearKey){
+  // yearKey 可以是 '2026', '2026-new', '2027' 等
+  if(dataKey===yearKey) return;
+  // 對應的數字年份（用於日期計算）
+  const numYear = parseInt(yearKey); // '2026-new' -> 2026
+  curYear = numYear;
+  dataKey = yearKey;
+  // 唯讀模式：舊版 2026
+  isReadOnly = (yearKey==='2026');
+  // Update all year buttons
+  const setBtn=(id,active,readonly)=>{
+    const el=document.getElementById(id); if(!el) return;
+    if(active){
+      const bg = readonly ? '#888' : '#1f5c9e';
+      el.style.cssText=`flex:1;padding:5px;font-size:12px;font-weight:600;border-radius:6px;border:2px solid ${bg};background:${bg};color:#fff;cursor:pointer;`;
+    } else {
+      el.style.cssText='flex:1;padding:5px;font-size:12px;font-weight:600;border-radius:6px;border:2px solid #ccc;background:#f8f9fc;color:#666;cursor:pointer;';
+    }
+  };
+  setBtn('yr2026', yearKey==='2026', true);
+  setBtn('yr2026new', yearKey==='2026-new', false);
+  setBtn('yr2027', yearKey==='2027', false);
+  // Load holidays
+  HOL = numYear===2027 ? {...HOL_2027} : {...HOL_2026};
   try{
-    const snap=await getDoc(doc(db,'config',`holidays_${year}`));
+    const snap=await getDoc(doc(db,'config',`holidays_${numYear}`));
     if(snap.exists()) HOL=snap.data().data||HOL;
   }catch(e){}
   // Re-subscribe to schedule data
   if(unsubSchedule){unsubSchedule();unsubSchedule=null;}
   scheduleData={};
-  const schedRef=doc(db,'schedule',String(year));
+  const schedRef=doc(db,'schedule',dataKey);
+  // 若是 2026-new 但 doc 不存在，提示初始化
+  if(yearKey==='2026-new'){
+    try{
+      const snap=await getDoc(schedRef);
+      if(!snap.exists() && isAdmin){
+        if(confirm('🆕 新版 2026 還沒有資料\n要從舊版 2026 匯入嗎？\n（會保留行程/請假/提早/延回，自動移除所有行前/交團/檢討記錄）')){
+          await initNewSchedule2026();
+        }
+      }
+    }catch(e){console.error(e);}
+  }
   unsubSchedule=onSnapshot(schedRef,snap=>{
     if(_skipNextSnapshot>0){ _skipNextSnapshot--; return; }
-    scheduleData=snap.exists()?(snap.data().entries||{}):{}
-;    renderSidebar();renderTable();
+    scheduleData=snap.exists()?(snap.data().entries||{}):{};
+    renderSidebar();renderTable();
     const tripsTab=document.getElementById('tripsTab');
     if(tripsTab&&tripsTab.style.display!=='none') renderTrips();
   });
   curMonth=1;
   // Update title displays
+  const labelMap={'2026':'2026 (舊唯讀)','2026-new':'2026','2027':'2027'};
+  const dispLabel=labelMap[yearKey]||yearKey;
   const tripTitle=document.getElementById('tripYearTitle');
-  if(tripTitle) tripTitle.textContent=`行程總覽 ${year}`;
+  if(tripTitle) tripTitle.textContent=`行程總覽 ${dispLabel}`;
   const qBtn=document.getElementById('queryTabBtn');
-  if(qBtn) qBtn.textContent=`查詢 / 統計 ${year}`;
+  if(qBtn) qBtn.textContent=`查詢 / 統計 ${dispLabel}`;
   const qBadge=document.getElementById('queryYearBadge');
-  if(qBadge) qBadge.textContent=`${year} 年`;
-  toast(`已切換到 ${year} 年`);
+  if(qBadge) qBadge.textContent=dispLabel;
+  // 顯示/隱藏唯讀提示
+  let banner=document.getElementById('readOnlyBanner');
+  if(isReadOnly){
+    if(!banner){
+      banner=document.createElement('div');
+      banner.id='readOnlyBanner';
+      banner.style.cssText='background:#fff3e0;color:#e65100;padding:8px 16px;text-align:center;font-weight:600;border-bottom:2px solid #ffb74d;font-size:13px;';
+      banner.textContent='🔒 您正在檢視舊版 2026 (唯讀)，所有編輯動作已禁用。如需編輯請切換到「2026 ✨」';
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+    banner.style.display='block';
+  } else if(banner){
+    banner.style.display='none';
+  }
+  toast(`已切換到 ${dispLabel}`);
 }
+
+// 初始化新版 2026：從舊 2026 複製，但移除所有 pre/hand/review
+async function initNewSchedule2026(){
+  try{
+    const oldSnap=await getDoc(doc(db,'schedule','2026'));
+    if(!oldSnap.exists()){toast('舊 2026 沒有資料');return;}
+    const oldEntries=oldSnap.data().entries||{};
+    const newEntries={};
+    let kept=0, removed=0;
+    Object.entries(oldEntries).forEach(([k,arr])=>{
+      const filtered=(arr||[]).filter(e=>{
+        if(['pre','hand','review'].includes(e.type)){removed++;return false;}
+        kept++;
+        return true;
+      });
+      if(filtered.length) newEntries[k]=filtered;
+    });
+    await setDoc(doc(db,'schedule','2026-new'),{entries:newEntries});
+    // 同時複製 tripRoles（角色設定也要帶過來）
+    // 注意：tripRoles 是 config/tripRoles，跨版本共用，所以不用複製
+    toast(`✅ 新版 2026 初始化完成：保留 ${kept} 筆，移除 ${removed} 筆會議記錄`);
+  }catch(e){
+    console.error(e);
+    toast('❌ 初始化失敗：'+e.message);
+  }
+}
+window.initNewSchedule2026=initNewSchedule2026;
 
 window.switchYear=switchYear;
 const CALENDAR_WEB_APP = 'https://script.google.com/macros/s/AKfycbxjBCxoFsvwZfQJlyOaLXvBw7KpLqUe0iYTDo6v4EWl4oNiDGGscvguTz8wF0uwvMrq/exec';
@@ -3625,7 +3712,7 @@ async function undo(){
   await saveSchedule();
   // 重新訂閱，跳過第一次（自己寫入的 echo）
   _skipNextSnapshot=1;
-  const sr=doc(db,'schedule',String(curYear));
+  const sr=doc(db,'schedule',dataKey);
   unsubSchedule=onSnapshot(sr,snap=>{
     if(_skipNextSnapshot>0){_skipNextSnapshot--;return;}
     scheduleData=snap.exists()?(snap.data().entries||{}):{};
@@ -3646,7 +3733,7 @@ async function redo(){
   cmdLog('↪️ 已重做','cmd-ok');
   await saveSchedule();
   _skipNextSnapshot=1;
-  const sr=doc(db,'schedule',String(curYear));
+  const sr=doc(db,'schedule',dataKey);
   unsubSchedule=onSnapshot(sr,snap=>{
     if(_skipNextSnapshot>0){_skipNextSnapshot--;return;}
     scheduleData=snap.exists()?(snap.data().entries||{}):{};
