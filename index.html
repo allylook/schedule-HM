@@ -1777,7 +1777,7 @@ window.renderTrips=function(){
           const tripEsc2=t.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
           return `<span style="font-size:11px;display:flex;align-items:center;gap:3px;">
             <span style="color:var(--text2);">${g}：</span>
-            <select onchange="setGuideMode('${tripEsc2}','${g.replace(/'/g,"\\'")}','${mt}',${grp.m},${grp.d},this.value)"
+            <select onchange="setGuideMode('${tripEsc2}','${g.replace(/'/g,"\\'")}','${mt}',${firstItem.m},${firstItem.d},this.value)"
               style="font-size:11px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;">
               <option value="現場" ${gMode==='現場'?'selected':''}>現場</option>
               <option value="線上" ${gMode==='線上'?'selected':''}>線上</option>
