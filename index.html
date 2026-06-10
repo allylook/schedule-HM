@@ -1762,9 +1762,15 @@ window.renderTrips=function(){
       const btnClass=record?'cal-btn sent':'cal-btn';
       const btnText=record?'✅ 已發送':'📅 發送行事曆';
 
-      // Per-guide mode selectors (admin only)
+      // Per-guide mode selectors (admin only) — 包含領隊、團控、業務
+      const tripRolesData=tripRoles[t.name]||{teamControl:[],business:[]};
+      const allModeMembers=[...new Set([
+        ...t.guideList,
+        ...(tripRolesData.teamControl||[]),
+        ...(tripRolesData.business||[])
+      ])].filter(g=>g&&g!=='__placeholder__');
       const guideModesHtml=isAdmin?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">
-        ${t.guideList.map(g=>{
+        ${allModeMembers.map(g=>{
           const gItem=items.find(i=>i.guide===g)||items[0];
           const gOnline=gItem&&gItem.text.includes('[線上]');
           const gRecord=gItem&&gItem.text.includes('[回看]');
@@ -3011,8 +3017,7 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
     if(!newDm){toast('日期格式錯誤');return;}
     const om=parseInt(oldDm[1]),od=parseInt(oldDm[2]);
     const nm=parseInt(newDm[1]),nd=parseInt(newDm[2]);
-    const modeTag=newMode==='現場'?'':`[${newMode}]`;
-    const newText=[newTime,tripName,{pre:'行前',hand:'交團',review:'檢討'}[meetType],modeTag].filter(Boolean).join(' ');
+    const typeLabel2={pre:'行前',hand:'交團',review:'檢討'}[meetType];
     // Find all guides + teamControl + business（排除會議室）
     const tripGuides=new Set();
     Object.entries(scheduleData).forEach(([k,v])=>{
@@ -3022,17 +3027,39 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
     });
     const roles5=tripRoles[tripName]||{teamControl:[],business:[]};
     [...(roles5.teamControl||[]),...(roles5.business||[])].filter(g=>g&&g!=='__placeholder__').forEach(g=>tripGuides.add(g));
-    tripGuides.forEach(g=>{
-      // Remove old：必須是「此行程」的會議才刪（用 meetMatchesTrip 比對，避免跨梯次誤刪）
+    // 取出舊會議的地點 tag（要保留到新會議）
+    let savedLocationTag='';
+    for(const g of tripGuides){
       const oldK=`${om}|${od}|${g}`;
+      const oldEntry=(scheduleData[oldK]||[]).find(e=>e.type===meetType&&meetMatchesTrip(e.text,tripName));
+      if(oldEntry){
+        const locMatch=oldEntry.text.match(/\[(大會議室|小會議室)\]/);
+        if(locMatch){savedLocationTag=locMatch[0];break;}
+      }
+    }
+    tripGuides.forEach(g=>{
+      const oldK=`${om}|${od}|${g}`;
+      // 取出此成員原本的個人模式（線上/回看）
+      let personalMode='';
       if(scheduleData[oldK]){
+        const oldEntry=scheduleData[oldK].find(e=>e.type===meetType&&meetMatchesTrip(e.text,tripName));
+        if(oldEntry){
+          const modeMatch=oldEntry.text.match(/\[(線上|回看)\]/);
+          if(modeMatch) personalMode=modeMatch[0];
+        }
+        // Remove old：必須是「此行程」的會議才刪
         scheduleData[oldK]=scheduleData[oldK].filter(e=>!(e.type===meetType&&meetMatchesTrip(e.text,tripName)));
         if(!scheduleData[oldK].length) delete scheduleData[oldK];
       }
-      // Add new
+      // 若此成員沒有原本模式，套用 modal 上選的預設模式
+      if(!personalMode){
+        personalMode = newMode==='現場' ? '' : `[${newMode}]`;
+      }
+      // 組合此成員的新文字（保留個人模式 + 共用地點）
+      const parts=[newTime, tripName, typeLabel2, personalMode, savedLocationTag].filter(Boolean);
+      const newText=parts.join(' ');
       const newK=`${nm}|${nd}|${g}`;
       if(!scheduleData[newK])scheduleData[newK]=[];
-      // 避免重複
       if(!scheduleData[newK].some(e=>e.type===meetType&&e.text===newText)){
         scheduleData[newK].push({type:meetType,text:newText});
       }
