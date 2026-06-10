@@ -244,7 +244,7 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #ddeeff;}
 .help-cmd{font-size:12px;font-family:monospace;color:var(--text);}
 .help-desc{font-size:11px;color:var(--text2);}
 .help-row:last-child{border-bottom:none;}
-#app{padding-bottom:130px;}
+#app{padding-bottom:30px;}
 
 /* query & admin light overrides */
 .q-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
@@ -2113,8 +2113,9 @@ function findGuide(raw){
 }
 
 function showCmdBar(){
-  const bar=document.getElementById('cmdBar');
-  if(isAdmin||userRole==='guide') bar.style.display='block';
+  // 指令列已停用（2026-06 起改由行程總覽操作）。如需恢復，取消下行註解即可。
+  // const bar=document.getElementById('cmdBar');
+  // if(isAdmin||userRole==='guide') bar.style.display='block';
 }
 
 document.getElementById('cmdHelpBtn').onclick=()=>{
