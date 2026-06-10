@@ -730,6 +730,7 @@ let guides = [];
 let scheduleData = {};
 let currentUser = null;
 let isAdmin = false;
+let isOwner = false; // 唯一擁有者：allylook@gmail.com，可看封存的舊資料
 let userRole = 'viewer';
 let popState = {m:0,d:0,g:'',type:'trip'};
 let unsubSchedule = null;
@@ -772,7 +773,13 @@ onAuthStateChanged(auth, async user => {
       userRole = userSnap.data().role || 'guide';
     }
     isAdmin = userRole === 'admin';
+    isOwner = (user.email||'').toLowerCase() === 'allylook@gmail.com';
     if(isAdmin){ show('adminBadge'); document.querySelector('[data-tab="admin"]').style.display=''; }
+    // 非 owner 隱藏舊版 2026 按鈕（封存）
+    if(!isOwner){
+      const oldBtn=document.getElementById('yr2026');
+      if(oldBtn) oldBtn.style.display='none';
+    }
 
     // 如果是 viewer（待審核）顯示等待畫面
     if(userRole === 'viewer'){
@@ -806,7 +813,7 @@ onAuthStateChanged(auth, async user => {
       }catch(e){console.error(e);}
     }
   } else {
-    currentUser = null; isAdmin = false;
+    currentUser = null; isAdmin = false; isOwner = false;
     if(unsubSchedule){ unsubSchedule(); unsubSchedule=null; }
     if(unsubGuides){ unsubGuides(); unsubGuides=null; }
     show('authScreen');
@@ -877,25 +884,29 @@ function setupListeners(){
     const date=el.dataset.date;
     const newMode=el.value;
     const dm=date.match(/(\d{1,2})\/(\d{1,2})/);
-    if(!dm) return;
+    if(!dm){ console.warn('[set-guide-mode] bad date:', date); return; }
     const m=parseInt(dm[1]),d=parseInt(dm[2]);
     const tripName2=el.dataset.trip;
     const k=`${m}|${d}|${guide}`;
     const arr=(scheduleData[k]||[]).slice();
+    console.log('[set-guide-mode]', {trip:tripName2, guide, meetType2, m, d, newMode, entries:arr.map(x=>x.type+':'+x.text)});
     // 只改本行程的會議
     const idx=arr.findIndex(e=>e.type===meetType2&&(tripName2?meetMatchesTrip(e.text,tripName2):true));
-    if(idx>=0){
-      const modeTag=newMode==='現場'?'':`[${newMode}]`;
-      let newText=arr[idx].text.replace(/\[(線上|回看)\]/g,'').trim();
-      if(modeTag) newText=newText+' '+modeTag;
-      arr[idx]={...arr[idx],text:newText};
-      scheduleData[k]=arr;
-      _skipNextSnapshot=1;
-      saveSnapshot(); await saveSchedule();
-      const typeLabel=['pre','hand','review'].indexOf(meetType2)>=0?['行前','交團','檢討'][['pre','hand','review'].indexOf(meetType2)]:'';
-      toast(`✅ ${guide} ${typeLabel}：${newMode}`);
-      renderTrips();
+    if(idx<0){
+      console.warn('[set-guide-mode] no matching entry found', {tripName2, meetType2, entries:arr});
+      toast('⚠️ 找不到對應會議記錄，請看 Console');
+      return;
     }
+    const modeTag=newMode==='現場'?'':`[${newMode}]`;
+    let newText=arr[idx].text.replace(/\[(線上|回看)\]/g,'').trim();
+    if(modeTag) newText=newText+' '+modeTag;
+    arr[idx]={...arr[idx],text:newText};
+    scheduleData[k]=arr;
+    _skipNextSnapshot=1;
+    saveSnapshot(); await saveSchedule();
+    const typeLabel=['pre','hand','review'].indexOf(meetType2)>=0?['行前','交團','檢討'][['pre','hand','review'].indexOf(meetType2)]:'';
+    toast(`✅ ${guide} ${typeLabel}：${newMode}`);
+    renderTrips();
   });
   document.getElementById('tripsList').addEventListener('click', async function(e){
     const btn = e.target.closest('button.cal-btn');
@@ -2581,6 +2592,11 @@ const HOL_2027 = {'1/1':'元旦','2/15':'除夕','2/16':'春節','2/17':'春節'
 async function switchYear(yearKey){
   // yearKey 可以是 '2026', '2026-new', '2027' 等
   if(dataKey===yearKey) return;
+  // 封存保護：只有 owner 能進舊版 2026
+  if(yearKey==='2026' && !isOwner){
+    toast('🔒 舊版 2026 已封存，僅限管理者瀏覽');
+    return;
+  }
   // 對應的數字年份（用於日期計算）
   const numYear = parseInt(yearKey); // '2026-new' -> 2026
   curYear = numYear;
