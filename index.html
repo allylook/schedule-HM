@@ -1775,15 +1775,11 @@ window.renderTrips=function(){
           const gOnline=gItem&&gItem.text.includes('[線上]');
           const gRecord=gItem&&gItem.text.includes('[回看]');
           const gMode=gRecord?'回看':gOnline?'線上':'現場';
+          const tripEsc2=t.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
           return `<span style="font-size:11px;display:flex;align-items:center;gap:3px;">
             <span style="color:var(--text2);">${g}：</span>
-            <select style="font-size:11px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;"
-              data-action="set-guide-mode"
-              data-trip="${t.name.replace(/"/g,'&quot;')}"
-              data-guide="${g}"
-              data-type="${mt}"
-              data-date="${meetDateStr}"
-              data-time="${timeStr2}">
+            <select onchange="setGuideMode('${tripEsc2}','${g.replace(/'/g,"\\'")}','${mt}',${grp.m},${grp.d},this.value)"
+              style="font-size:11px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;">
               <option value="現場" ${gMode==='現場'?'selected':''}>現場</option>
               <option value="線上" ${gMode==='線上'?'selected':''}>線上</option>
               <option value="回看" ${gMode==='回看'?'selected':''}>回看</option>
@@ -3282,6 +3278,32 @@ window.syncTripMeetings = async function(tripName){
     return `${({pre:'行前',hand:'交團',review:'檢討'})[mt]} ${me.m}/${me.d}`;
   }).filter(Boolean).join('、');
   toast(`✅「${tripName}」已同步：${summary}（共 ${added} 筆）`);
+  renderTrips();
+};
+
+// -- set individual guide mode for a meeting --
+window.setGuideMode = async function(trip, guide, mt, m, d, newMode){
+  if(!isAdmin){toast('需要管理員權限');return;}
+  console.log('[setGuideMode]', {trip, guide, mt, m, d, newMode});
+  const k = m+'|'+d+'|'+guide;
+  const arr = (scheduleData[k]||[]).slice();
+  const idx = arr.findIndex(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
+  if(idx<0){
+    console.warn('[setGuideMode] no matching entry', {k, entries:arr});
+    toast('⚠️ 找不到對應會議記錄（請看 Console）');
+    return;
+  }
+  // 移除舊的線上/回看標籤，加上新的
+  let newText = arr[idx].text.replace(/\s*\[(線上|回看)\]/g, '').trim();
+  if(newMode==='線上') newText += ' [線上]';
+  else if(newMode==='回看') newText += ' [回看]';
+  arr[idx] = {...arr[idx], text:newText};
+  scheduleData[k] = arr;
+  _skipNextSnapshot = 1;
+  saveSnapshot();
+  await saveSchedule();
+  const typeLabel = {pre:'行前',hand:'交團',review:'檢討'}[mt];
+  toast('✅ '+guide+' '+typeLabel+'：'+newMode);
   renderTrips();
 };
 
