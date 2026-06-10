@@ -646,41 +646,6 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
     💡 名字大小寫不敏感、空格自動忽略｜團名請用引號包住
   </div>
 </div>
-  <h4>指令說明 <button onclick="document.getElementById('cmdHelp').style.display='none'">×</button></h4>
-  <div class="help-section">
-    <h5>班表操作</h5>
-    <div class="help-row"><span class="help-cmd">Chris 9/5 TMB-G1</span><span class="help-desc">填入行程</span></div>
-    <div class="help-row"><span class="help-cmd">Chris 9/5 行前 10:00 TMB-G1</span><span class="help-desc">填入行前（現場）</span></div>
-    <div class="help-row"><span class="help-cmd">Chris 9/5 行前 10:00 TMB-G1 線上</span><span class="help-desc">填入行前（線上）</span></div>
-    <div class="help-row"><span class="help-cmd">Chris 9/5 行前 TMB-G1 回看</span><span class="help-desc">填入行前（回看，不需時間）</span></div>
-    <div class="help-row"><span class="help-cmd">Chris 9/5 延回 / 提早去 / 請假</span><span class="help-desc">標記狀態</span></div>
-    <div class="help-row"><span class="help-cmd">/清除 Chris 9/5 行程</span><span class="help-desc">清除特定類型</span></div>
-    <div class="help-row"><span class="help-cmd">/批次 Chris 9/5~9/13 TMB-G1</span><span class="help-desc">批次填入日期範圍</span></div>
-  </div>
-  <div class="help-section">
-    <h5>領隊管理（管理員限定）</h5>
-    <div class="help-row"><span class="help-cmd">/新增領隊 Amy</span><span class="help-desc">新增領隊</span></div>
-    <div class="help-row"><span class="help-cmd">/刪除領隊 Amy</span><span class="help-desc">刪除領隊及所有資料</span></div>
-    <div class="help-row"><span class="help-cmd">/改名 建源 阿源</span><span class="help-desc">領隊改名（同步所有資料）</span></div>
-    <div class="help-row"><span class="help-cmd">/換領隊 Chris Ally TMB-G1</span><span class="help-desc">換領隊同時更新行前/交團/檢討</span></div>
-    <div class="help-row"><span class="help-cmd">/名單</span><span class="help-desc">顯示所有領隊</span></div>
-  </div>
-  <div class="help-section">
-    <h5>行程管理（管理員限定）</h5>
-    <div class="help-row"><span class="help-cmd">/新增團 TMB-G6 10/1 13天</span><span class="help-desc">自動計算日期填入行程</span></div>
-    <div class="help-row"><span class="help-cmd">/新增團 TMB-G6 10/1~10/13 Chris Ally</span><span class="help-desc">指定日期範圍和領隊</span></div>
-  </div>
-  <div class="help-section">
-    <h5>查詢</h5>
-    <div class="help-row"><span class="help-cmd">/查詢 Chris 9月</span><span class="help-desc">查詢某人某月行程</span></div>
-    <div class="help-row"><span class="help-cmd">/空檔 9/5</span><span class="help-desc">查詢某天有空的領隊</span></div>
-    <div class="help-row"><span class="help-cmd">/空檔 9/5~9/10</span><span class="help-desc">查詢日期範圍內全程有空的領隊</span></div>
-    <div class="help-row"><span class="help-cmd">/行程 TMB-G1</span><span class="help-desc">查詢某行程所有領隊</span></div>
-    <div class="help-row"><span class="help-cmd">/統計 9月</span><span class="help-desc">查詢某月出團統計</span></div>
-    <div class="help-row"><span class="help-cmd">/缺會議</span><span class="help-desc">列出缺行前/交團/檢討的行程</span></div>
-  </div>
-  <div style="font-size:11px;color:var(--text3);padding-top:8px;border-top:1px solid #f0f2f5;">💡 名字大小寫不敏感、空格自動忽略</div>
-</div>
 
 <!-- Firebase + App Logic -->
 <script type="module">
@@ -1026,6 +991,8 @@ async function saveGuides(){ await setDoc(doc(db,'config','guides'),{list:guides
 async function saveSchedule(){
   if(isReadOnly){toast('⚠️ 此為唯讀版本，不可修改');return;}
   await setDoc(doc(db,'schedule',dataKey),{entries:scheduleData});
+  // 本地寫入的 snapshot 已被 hasPendingWrites 過濾，需主動重繪
+  safeRenderAll();
 }
 
 // ── Can Edit ──
@@ -1153,21 +1120,22 @@ async function removeEntry(m,d,g,i){
 }
 
 function openPop(m,d,g){
-  popState={m,d,g,type:'trip'};
+  popState={m,d,g,type:'meeting'}; // 班表預設「會議」（行程改由行程總覽建立）
   document.getElementById('popTitle').textContent=`${g}  ${m}/${d}`;
   document.getElementById('popInput').value='';
   document.getElementById('popHint').textContent='';
   document.getElementById('popTime').value='';
   document.getElementById('popTarget').value='';
   document.querySelector('input[name="meetMode"][value="現場"]').checked=true;
-  document.getElementById('meetingFields').style.display='none';
-  document.getElementById('normalFields').style.display='block';
+  // 預設類型為「會議」，顯示對應欄位
+  document.getElementById('meetingFields').style.display='block';
+  document.getElementById('normalFields').style.display='none';
   const tg=document.getElementById('typeGrid');tg.innerHTML='';
   Object.entries(TYPES).forEach(([t,info])=>{
-    // 行前/交團/檢討只能由行程卡操作，班表不再提供
-    if(['pre','hand','review'].includes(t)) return;
+    // 行前/交團/檢討只能由行程卡操作；行程由行程總覽「＋新增行程」建立
+    if(['pre','hand','review','trip'].includes(t)) return;
     const btn=document.createElement('button');
-    btn.className='tbtn'+(t==='trip'?' s-trip':'');btn.textContent=info.label;
+    btn.className='tbtn'+(t==='meeting'?' s-meeting':'');btn.textContent=info.label;
     btn.onclick=()=>{
       popState.type=t;
       tg.querySelectorAll('.tbtn').forEach(b=>b.className='tbtn');
@@ -1184,7 +1152,7 @@ function openPop(m,d,g){
   });
   document.getElementById('ov').style.display='flex';
   setTimeout(()=>{
-    const isMeeting=['pre','hand','review'].includes(popState.type);
+    const isMeeting=['pre','hand','review','meeting','share','explore'].includes(popState.type);
     if(isMeeting) document.getElementById('popTime').focus();
     else document.getElementById('popInput').focus();
   },50);
