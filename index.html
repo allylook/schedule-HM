@@ -991,11 +991,10 @@ function setupListeners(){
   const schedRef = doc(db,'schedule',dataKey);
   unsubSchedule = onSnapshot(schedRef, snap => {
     if(_skipNextSnapshot>0){ _skipNextSnapshot--; return; }
+    // 本地寫入產生的快照不重繪（資料已是最新，避免打斷使用者操作）
+    if(snap.metadata.hasPendingWrites) return;
     scheduleData = snap.exists() ? (snap.data().entries||{}) : {};
-    renderSidebar(); renderTable();
-    // Re-render trips if trips tab is active
-    const tripsTab = document.getElementById('tripsTab');
-    if(tripsTab && tripsTab.style.display !== 'none') renderTrips();
+    safeRenderAll();
   });
 }
 
@@ -2648,10 +2647,9 @@ async function switchYear(yearKey){
   }
   unsubSchedule=onSnapshot(schedRef,snap=>{
     if(_skipNextSnapshot>0){ _skipNextSnapshot--; return; }
+    if(snap.metadata.hasPendingWrites) return;
     scheduleData=snap.exists()?(snap.data().entries||{}):{};
-    renderSidebar();renderTable();
-    const tripsTab=document.getElementById('tripsTab');
-    if(tripsTab&&tripsTab.style.display!=='none') renderTrips();
+    safeRenderAll();
   });
   curMonth=1;
   // Update title displays
@@ -3770,6 +3768,22 @@ function updateUndoButtons(){
 }
 
 let _skipNextSnapshot = 0;
+
+// 安全重繪：若使用者正在操作 select/input，延後重繪避免打斷
+function safeRenderAll(){
+  const ae=document.activeElement;
+  const busy=ae&&(ae.tagName==='SELECT'||ae.tagName==='INPUT'||ae.tagName==='TEXTAREA')&&ae.closest('#tripsList');
+  if(busy){
+    // 等使用者操作完（blur 或 change 後）再重繪
+    const doRender=()=>{ renderSidebar(); renderTable(); const tt=document.getElementById('tripsTab'); if(tt&&tt.style.display!=='none') renderTrips(); };
+    ae.addEventListener('blur', doRender, {once:true});
+    setTimeout(doRender, 3000); // 最多等 3 秒
+    return;
+  }
+  renderSidebar(); renderTable();
+  const tripsTab=document.getElementById('tripsTab');
+  if(tripsTab&&tripsTab.style.display!=='none') renderTrips();
+}
 
 async function undo(){
   if(!undoStack.length){toast('沒有可還原的操作');return;}
