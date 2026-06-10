@@ -848,6 +848,27 @@ function setupListeners(){
       const dm=date.match(/(\d{1,2})\/(\d{1,2})/);
       if(!dm) return;
       const m=parseInt(dm[1]),d=parseInt(dm[2]);
+      // 會議室衝突檢查：同日同會議室同時段已有其他行程
+      if(newLoc){
+        const roomKey=`${m}|${d}|${newLoc}`;
+        const roomEntries=scheduleData[roomKey]||[];
+        const conflict=roomEntries.find(re=>{
+          if(!re.text) return false;
+          // 排除本行程自己的記錄
+          if(meetMatchesTrip(re.text, trip)) return false;
+          // 比對時間：同時段才算衝突
+          const reTime=(re.text.match(/(\d{1,2}:\d{2})/)||[])[1]||'';
+          return reTime===time && time!=='';
+        });
+        if(conflict){
+          const ok=confirm(`⚠️ ${newLoc}在 ${m}/${d} ${time} 已有安排：\n「${conflict.text}」\n\n建議另外安排時間。仍要繼續預約嗎？`);
+          if(!ok){
+            // 還原下拉選單到原本的值
+            renderTrips();
+            return;
+          }
+        }
+      }
       const roles2=tripRoles[trip]||{teamControl:[],business:[]};
       // Find all people with THIS trip's meeting（用 meetMatchesTrip 避免跨梯次）
       const meetPeople=new Set();
@@ -1079,7 +1100,10 @@ function renderTable(){
       const td=document.createElement('td');
       const cell=document.createElement('div');cell.className='cell';
       const entries=scheduleData[`${m}|${d}|${g}`]||[];
-      entries.forEach((e,i)=>{
+      // 按時間排序顯示（無時間的排最前），保留原始 index 供編輯/刪除
+      const getTime=t=>{const mm=(t||'').match(/(\d{1,2}):(\d{2})/)||(t||'').match(/^(\d{2})(\d{2})\s/);return mm?parseInt(mm[1])*60+parseInt(mm[2]):-1;};
+      const sorted=entries.map((e,i)=>({e,i})).sort((a,b)=>getTime(a.e.text)-getTime(b.e.text));
+      sorted.forEach(({e,i})=>{
         const tag=document.createElement('div');tag.className='tag '+TYPES[e.type].cls;
         const lbl=e.text||TYPES[e.type].label;
         const canDel=canEdit(g);
