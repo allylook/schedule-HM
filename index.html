@@ -162,7 +162,12 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #ddeeff;}
 .trip-info-row{font-size:12px;color:var(--text2);display:flex;gap:6px;align-items:flex-start;}
 .trip-info-label{font-weight:600;color:var(--text);white-space:nowrap;min-width:36px;}
 .trip-info-val{color:var(--text2);flex:1;}
-.trip-meet{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.trip-meet{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;align-items:flex-start;}
+.meet-card{border-radius:8px;padding:8px 10px;border:1.5px solid;min-width:230px;max-width:340px;}
+.meet-card.pre{background:#faf7ff;border-color:var(--purple-border);}
+.meet-card.hand{background:#fff9f4;border-color:var(--peach-border);}
+.meet-card.review{background:#f7fcf2;border-color:var(--lime-border);}
+.meet-card.missing-card{background:#fdf5f5;border-color:#f5c6c6;border-style:dashed;padding:6px 10px;min-width:auto;display:flex;align-items:center;}
 .meet-badge{font-size:11px;padding:2px 8px;border-radius:4px;display:inline-flex;align-items:center;gap:3px;}
 .meet-badge.pre{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-border);}
 .meet-badge.hand{background:var(--peach-dim);color:var(--peach);border:1px solid var(--peach-border);}
@@ -1721,7 +1726,7 @@ window.renderTrips=function(){
       const key=`${t.name}|${mt}`;
       const record=calInviteRecords[key];
       const recordHtml=record?`<div class="cal-record">✅ 已發送 ${record.sentAt.slice(0,10)} → ${record.guides.join('、')}</div>`:'';
-      if(!items.length) return `<div><span class="meet-badge missing">⚠️ 缺${label}</span></div>`;
+      if(!items.length) return `<div class="meet-card missing-card"><span class="meet-badge missing">⚠️ 缺${label}</span></div>`;
       const unique=[...new Map(items.map(i=>[`${i.m}/${i.d}|${i.text}`,i])).values()];
       // Group by date+time, show per-guide mode if different
       const dateGroups={};
@@ -1814,7 +1819,7 @@ window.renderTrips=function(){
           data-time="${timeStr2}"
           data-mode="${mode2}">✏️ 編輯</span>
         ${recordHtml}</div>`:'';
-      return `<div>${badges}${guideModesHtml}${calBtnHtml}</div>`;
+      return `<div class="meet-card ${mt}">${badges}${guideModesHtml}${calBtnHtml}</div>`;
     };
 
     const meetHtml=['pre','hand','review'].map(fmtMeetings).join('');
