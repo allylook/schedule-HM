@@ -464,8 +464,10 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
         <div class="q-card" style="grid-column:1/-1;">
           <h4 style="margin:0 0 10px;">🛠️ 資料修復工具（管理員）</h4>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="diagnoseOrphanMeetings()" style="padding:6px 16px;background:#1976d2;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;">🔍 診斷孤兒會議</button>
             <button onclick="repairAllMeetings()" style="padding:6px 16px;background:#e53935;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;">🔧 修復全部行程會議資料</button>
           </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px;">💡「診斷孤兒會議」：找出班表裡有但行程卡顯示不出來的會議（通常是文字格式不符），可逐筆選擇是否回收到正確行程。</div>
           <div id="repairLog" style="margin-top:10px;font-size:12px;color:var(--text3);white-space:pre-wrap;max-height:200px;overflow-y:auto;"></div>
         </div>
       </div>
@@ -1101,6 +1103,8 @@ function openPop(m,d,g){
   document.getElementById('normalFields').style.display='block';
   const tg=document.getElementById('typeGrid');tg.innerHTML='';
   Object.entries(TYPES).forEach(([t,info])=>{
+    // 行前/交團/檢討只能由行程卡操作，班表不再提供
+    if(['pre','hand','review'].includes(t)) return;
     const btn=document.createElement('button');
     btn.className='tbtn'+(t==='trip'?' s-trip':'');btn.textContent=info.label;
     btn.onclick=()=>{
@@ -1937,6 +1941,12 @@ function openEditPop(m, d, g, idx) {
   const k = `${m}|${d}|${g}`;
   const entry = (scheduleData[k] || [])[idx];
   if (!entry) return;
+  // 行前/交團/檢討只能由行程卡編輯
+  if(['pre','hand','review'].includes(entry.type)){
+    const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[entry.type];
+    toast(`⚠️ ${typeLabel}會議請至「行程總覽」頁籤的行程卡編輯`);
+    return;
+  }
   editState = { m, d, g, idx };
   document.getElementById('editTitle').textContent = `編輯 ${g} ${m}/${d}`;
   document.getElementById('editInput').value = entry.text || '';
@@ -1995,6 +2005,12 @@ window.ctxCopy = function() {
 };
 
 window.ctxPaste = async function() {
+  if(clipboard && ['pre','hand','review'].includes(clipboard.type)){
+    const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[clipboard.type];
+    toast(`⚠️ ${typeLabel}會議請至行程卡新增，不可直接貼到班表`);
+    ctxMenu.style.display='none';
+    return;
+  }
   if (!contextState || !clipboard) return;
   const { m, d, g } = contextState;
   const k = `${m}|${d}|${g}`;
@@ -2018,6 +2034,14 @@ window.ctxDelete = async function() {
   if (!contextState) return;
   const { m, d, g, idx } = contextState;
   const k = `${m}|${d}|${g}`;
+  const entry = (scheduleData[k] || [])[idx];
+  // 行前/交團/檢討只能由行程卡刪除
+  if(entry && ['pre','hand','review'].includes(entry.type)){
+    const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[entry.type];
+    toast(`⚠️ ${typeLabel}會議請至「行程總覽」頁籤的行程卡刪除（點會議標籤上的 ×）`);
+    ctxMenu.style.display = 'none';
+    return;
+  }
   if (scheduleData[k]) {
     scheduleData[k].splice(idx, 1);
     if (!scheduleData[k].length) delete scheduleData[k];
@@ -3167,6 +3191,134 @@ window.deleteMeeting = async function(trip, mt, m, d, time){
   await saveSchedule();
   toast('✅ 已刪除「'+trip+'」'+typeLabel+'（清除 '+removed+' 筆）');
   renderTrips();
+};
+
+// -- diagnose orphan meetings --
+window.diagnoseOrphanMeetings = async function(){
+  if(!isAdmin){toast('需要管理員權限');return;}
+  const log = document.getElementById('repairLog');
+  log.innerHTML = '<div>掃描中...</div>';
+
+  // 1. 收集所有當前行程名
+  const tripNames = new Set();
+  Object.values(scheduleData).forEach(arr=>{
+    arr.forEach(e=>{ if(e.type==='trip'&&e.text) tripNames.add(e.text); });
+  });
+  const tripList = [...tripNames];
+
+  // 2. 掃所有 pre/hand/review 記錄，找出沒有任何 trip 能精確 match 的
+  const orphans = []; // {key, m, d, guide, type, text, suggestions: [tripName, score, ...]}
+  Object.entries(scheduleData).forEach(([k,arr])=>{
+    const parts=k.split('|'); if(parts.length<3) return;
+    const m=parseInt(parts[0]), d=parseInt(parts[1]), guide=parts[2];
+    if(guide==='大會議室'||guide==='小會議室') return;
+    arr.forEach((e,idx)=>{
+      if(!['pre','hand','review'].includes(e.type)) return;
+      if(!e.text) return;
+      // 精確比對：是否有任何 trip 能 match
+      const matched = tripList.some(tn=>meetMatchesTrip(e.text, tn));
+      if(matched) return;
+      // 抽出文字裡的行程名段（去掉時間、類型、標籤）
+      let s=e.text.replace(/^\d{1,2}:?\d{2}\s+/,'');
+      s=s.replace(/\s+(行前|交團|檢討)(\s*\[.*?\])*\s*$/,'').trim();
+      s=s.replace(/\s*\[[^\]]+\]/g,'').trim();
+      // 找最相似的 trip name (substring overlap)
+      const suggestions=tripList.map(tn=>{
+        // 包含關係或部分重疊
+        let score=0;
+        if(tn.includes(s)||s.includes(tn)) score=Math.min(s.length, tn.length);
+        else {
+          // 計算最長公共子字串長度
+          for(let i=0;i<s.length;i++){
+            for(let j=i+2;j<=s.length;j++){
+              if(tn.includes(s.substring(i,j))&&j-i>score) score=j-i;
+            }
+          }
+        }
+        return {tn, score};
+      }).filter(x=>x.score>=2).sort((a,b)=>b.score-a.score).slice(0,3);
+      orphans.push({key:k, m, d, guide, type:e.type, text:e.text, extractedName:s, suggestions});
+    });
+  });
+
+  if(orphans.length===0){
+    log.innerHTML='<div style="color:#2e7d32;">✅ 沒有孤兒會議，所有記錄都能正確對應到行程卡。</div>';
+    return;
+  }
+
+  // 渲染列表，每筆可選擇要 reassign 到哪個 trip 或刪除
+  const typeLabel={pre:'行前',hand:'交團',review:'檢討'};
+  let html='<div style="margin-bottom:8px;color:#e65100;">⚠️ 找到 '+orphans.length+' 筆孤兒會議（班表有但行程卡顯示不到）：</div>';
+  html+='<div style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;">';
+  orphans.forEach((o,i)=>{
+    html+='<div style="border-bottom:1px dashed #eee;padding:8px 0;font-size:12px;">';
+    html+='<div><b>'+o.guide+'</b> '+o.m+'/'+o.d+' '+typeLabel[o.type]+' — <code style="background:#f5f5f5;padding:2px 4px;border-radius:3px;">'+o.text+'</code></div>';
+    html+='<div style="margin-top:4px;">推測行程名：<b>'+(o.extractedName||'(無)')+'</b> → ';
+    html+='<select id="orphan_select_'+i+'" style="font-size:12px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;font-family:inherit;">';
+    html+='<option value="__skip__">不處理</option>';
+    html+='<option value="__delete__">🗑️ 刪除此筆</option>';
+    o.suggestions.forEach(s=>{
+      html+='<option value="'+s.tn.replace(/"/g,'&quot;')+'">重新指派到 → '+s.tn+'</option>';
+    });
+    tripList.filter(tn=>!o.suggestions.some(s=>s.tn===tn)).forEach(tn=>{
+      html+='<option value="'+tn.replace(/"/g,'&quot;')+'">指派到 → '+tn+'</option>';
+    });
+    html+='</select>';
+    html+='</div></div>';
+  });
+  html+='</div>';
+  html+='<div style="margin-top:10px;display:flex;gap:8px;">';
+  html+='<button onclick="applyOrphanFix('+orphans.length+')" style="padding:6px 14px;background:#2e7d32;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;">✅ 套用所選操作</button>';
+  html+='</div>';
+  log.innerHTML=html;
+
+  // 暫存 orphans 供 apply 使用
+  window._currentOrphans = orphans;
+};
+
+window.applyOrphanFix = async function(count){
+  const orphans = window._currentOrphans || [];
+  if(!orphans.length){toast('無待處理記錄');return;}
+  const typeLabel={pre:'行前',hand:'交團',review:'檢討'};
+  let reassigned=0, deleted=0;
+
+  for(let i=0;i<orphans.length;i++){
+    const sel = document.getElementById('orphan_select_'+i);
+    if(!sel) continue;
+    const choice = sel.value;
+    if(choice==='__skip__') continue;
+    const o = orphans[i];
+    const arr = scheduleData[o.key];
+    if(!arr) continue;
+    const idx = arr.findIndex(e=>e.type===o.type&&e.text===o.text);
+    if(idx<0) continue;
+
+    if(choice==='__delete__'){
+      arr.splice(idx, 1);
+      if(!arr.length) delete scheduleData[o.key];
+      deleted++;
+    } else {
+      // Reassign：把 text 改成標準格式「時間 行程名 類型 [標籤]」
+      const newTripName = choice;
+      // 抽出時間
+      const timeMatch = o.text.match(/^(\d{1,2}:?\d{2})/);
+      const timeStr = timeMatch ? timeMatch[1] : '';
+      // 抽出標籤
+      const tags = (o.text.match(/\[[^\]]+\]/g)||[]).join(' ');
+      const newText = [timeStr, newTripName, typeLabel[o.type], tags].filter(Boolean).join(' ');
+      arr[idx] = {type:o.type, text:newText};
+      reassigned++;
+    }
+  }
+
+  if(reassigned===0&&deleted===0){toast('未選擇任何操作');return;}
+  saveSnapshot();
+  _skipNextSnapshot=1;
+  await saveSchedule();
+  toast('✅ 重新指派 '+reassigned+' 筆，刪除 '+deleted+' 筆');
+  renderTrips();
+  // 重新掃一次
+  diagnoseOrphanMeetings();
 };
 
 // -- repair all meetings --
