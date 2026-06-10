@@ -465,6 +465,8 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
         <div class="q-card" id="repairToolsCard" style="grid-column:1/-1;display:none;">
           <h4 style="margin:0 0 10px;">🛠️ 資料修復工具（限擁有者）</h4>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="checkAllTripsConsistency(false)" style="padding:6px 16px;background:#00897b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;">📋 全行程一致性檢查</button>
+            <button onclick="checkAllTripsConsistency(true)" style="padding:6px 16px;background:#2e7d32;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;">✅ 全部自動修復</button>
             <button onclick="diagnoseOrphanMeetings()" style="padding:6px 16px;background:#1976d2;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;">🔍 診斷孤兒會議</button>
             <button onclick="repairAllMeetings()" style="padding:6px 16px;background:#e53935;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;">🔧 修復全部行程會議資料</button>
           </div>
@@ -3204,7 +3206,8 @@ function openAddRoleModal(tripName, role){
 }
 
 // ── 同步行程會議到所有成員 ──
-window.syncTripMeetings = async function(tripName){
+// 核心同步邏輯（可 dry-run）：回傳 {fixed, detail} 
+function syncOneTrip(tripName, dryRun){
   // 1. 收集所有當前成員（領隊 + 團控 + 業務）
   const allMembers=new Set();
   Object.entries(scheduleData).forEach(([k,v])=>{
@@ -3214,65 +3217,153 @@ window.syncTripMeetings = async function(tripName){
   });
   const roles=tripRoles[tripName]||{teamControl:[],business:[]};
   [...(roles.teamControl||[]),...(roles.business||[])].filter(g=>g&&g!=='__placeholder__').forEach(g=>allMembers.add(g));
+  if(allMembers.size===0) return {fixed:0, detail:''};
 
-  // 2. 對每種會議類型，統計所有候選版本的票數，選出最多人有的那筆
+  // 2. 投票選出每類會議的「基準版本」（投票 key 排除個人模式 tag）
+  const stripPersonal=t=>(t||'').replace(/\s*\[(線上|回看)\]/g,'').trim();
   const bestEntry={pre:null,hand:null,review:null};
   ['pre','hand','review'].forEach(mt=>{
-    const votes=new Map(); // key = "m|d|text" -> count
+    const votes=new Map();
     Object.entries(scheduleData).forEach(([k,v])=>{
       const parts=k.split('|'); if(parts.length<3) return;
-      const g=parts[2];
-      if(g==='大會議室'||g==='小會議室') return;
+      if(parts[2]==='大會議室'||parts[2]==='小會議室') return;
       v.filter(e=>e.type===mt&&meetMatchesTrip(e.text,tripName)).forEach(e=>{
-        const vk=`${parts[0]}|${parts[1]}|${e.text}`;
+        const vk=parts[0]+'|'+parts[1]+'|'+stripPersonal(e.text);
         votes.set(vk,(votes.get(vk)||0)+1);
       });
     });
     if(votes.size===0) return;
-    // 選票數最多的（同票取日期最新的）
     let best=null,bestCount=0;
     votes.forEach((count,vk)=>{
-      const [m,d,text]=vk.split('|');
-      if(count>bestCount||(count===bestCount&&best&&(parseInt(m)*100+parseInt(d))>(best.m*100+best.d))){
-        best={m:parseInt(m),d:parseInt(d),text,type:mt};
-        bestCount=count;
-      }
+      const p=vk.split('|');
+      const cand={m:parseInt(p[0]),d:parseInt(p[1]),text:p.slice(2).join('|'),type:mt};
+      if(count>bestCount){best=cand;bestCount=count;}
     });
     bestEntry[mt]=best;
   });
+  if(!Object.values(bestEntry).some(x=>x)) return {fixed:0, detail:''};
 
-  const hasMeets=Object.values(bestEntry).some(x=>x!==null);
-  if(!hasMeets){toast(`⚠️「${tripName}」尚無行前/交團/檢討記錄`);return;}
-
-  // 3. 清除所有成員（含會議室）身上此行程的舊會議記錄
-  Object.keys(scheduleData).forEach(k=>{
-    const parts=k.split('|'); if(parts.length<3) return;
-    scheduleData[k]=scheduleData[k].filter(e=>
-      !(['pre','hand','review'].includes(e.type)&&meetMatchesTrip(e.text,tripName))
-    );
-    if(!scheduleData[k].length) delete scheduleData[k];
-  });
-
-  // 4. 統一寫入正確版本到所有成員
-  let added=0;
+  // 3. 記住每個成員目前的個人模式
+  const personalModes={}; // "guide|mt" -> "[線上]" / "[回看]" / ""
   allMembers.forEach(g=>{
     ['pre','hand','review'].forEach(mt=>{
-      const me=bestEntry[mt]; if(!me) return;
-      const k=`${me.m}|${me.d}|${g}`;
-      if(!scheduleData[k])scheduleData[k]=[];
-      scheduleData[k].push({type:mt,text:me.text});
-      added++;
+      Object.entries(scheduleData).forEach(([k,v])=>{
+        const parts=k.split('|'); if(parts.length<3||parts[2]!==g) return;
+        const entry=v.find(e=>e.type===mt&&meetMatchesTrip(e.text,tripName));
+        if(entry){
+          const mm=entry.text.match(/\[(線上|回看)\]/);
+          if(mm) personalModes[g+'|'+mt]=mm[0];
+        }
+      });
     });
   });
 
-  saveSnapshot(); await saveSchedule();
-  const summary=['pre','hand','review'].map(mt=>{
-    const me=bestEntry[mt];
-    if(!me) return null;
-    return `${({pre:'行前',hand:'交團',review:'檢討'})[mt]} ${me.m}/${me.d}`;
-  }).filter(Boolean).join('、');
-  toast(`✅「${tripName}」已同步：${summary}（共 ${added} 筆）`);
+  // dry-run：只計算差異
+  let wouldFix=0;
+  const missing=[];
+  allMembers.forEach(g=>{
+    ['pre','hand','review'].forEach(mt=>{
+      const me=bestEntry[mt]; if(!me) return;
+      const k=me.m+'|'+me.d+'|'+g;
+      const has=(scheduleData[k]||[]).some(e=>e.type===mt&&meetMatchesTrip(e.text,tripName));
+      if(!has){wouldFix++;missing.push(g+'缺'+({pre:'行前',hand:'交團',review:'檢討'})[mt]);}
+    });
+  });
+  // 會議室檢查
+  ['pre','hand','review'].forEach(mt=>{
+    const me=bestEntry[mt]; if(!me) return;
+    const locM=me.text.match(/\[(大會議室|小會議室)\]/);
+    if(!locM) return;
+    const room=locM[1];
+    const roomKey=me.m+'|'+me.d+'|'+room;
+    const roomHas=(scheduleData[roomKey]||[]).some(e=>meetMatchesTrip(e.text,tripName)&&e.text.includes(({pre:'行前',hand:'交團',review:'檢討'})[mt]));
+    if(!roomHas){wouldFix++;missing.push(room+'缺'+({pre:'行前',hand:'交團',review:'檢討'})[mt]);}
+  });
+
+  if(dryRun) return {fixed:wouldFix, detail:missing.join('、')};
+  if(wouldFix===0) return {fixed:0, detail:''};
+
+  // 4. 實際修復：清除所有此行程的會議記錄（成員+會議室）
+  Object.keys(scheduleData).forEach(k=>{
+    const parts=k.split('|'); if(parts.length<3) return;
+    const isRoom=(parts[2]==='大會議室'||parts[2]==='小會議室');
+    scheduleData[k]=scheduleData[k].filter(e=>{
+      if(isRoom){
+        // 會議室欄：清除此行程的會議記錄（type 可能為 meeting/pre/hand/review）
+        if(!e.text||!meetMatchesTrip(e.text,tripName)) return true;
+        return !/(行前|交團|檢討)/.test(e.text);
+      }
+      return !(['pre','hand','review'].includes(e.type)&&meetMatchesTrip(e.text,tripName));
+    });
+    if(!scheduleData[k].length) delete scheduleData[k];
+  });
+
+  // 5. 重寫：成員（基準+個人模式）、會議室
+  allMembers.forEach(g=>{
+    ['pre','hand','review'].forEach(mt=>{
+      const me=bestEntry[mt]; if(!me) return;
+      const pm=personalModes[g+'|'+mt]||'';
+      const text=pm?me.text+' '+pm:me.text;
+      const k=me.m+'|'+me.d+'|'+g;
+      if(!scheduleData[k])scheduleData[k]=[];
+      scheduleData[k].push({type:mt,text});
+    });
+  });
+  ['pre','hand','review'].forEach(mt=>{
+    const me=bestEntry[mt]; if(!me) return;
+    const locM=me.text.match(/\[(大會議室|小會議室)\]/);
+    if(!locM) return;
+    const room=locM[1];
+    const roomKey=me.m+'|'+me.d+'|'+room;
+    const timeM=me.text.match(/^(\d{1,2}:?\d{2})/);
+    const roomText=(timeM?timeM[1]+' ':'')+tripName+' '+({pre:'行前',hand:'交團',review:'檢討'})[mt];
+    if(!scheduleData[roomKey])scheduleData[roomKey]=[];
+    if(!scheduleData[roomKey].some(e=>e.text===roomText)){
+      scheduleData[roomKey].push({type:'meeting',text:roomText});
+    }
+  });
+  return {fixed:wouldFix, detail:missing.join('、')};
+}
+
+window.syncTripMeetings = async function(tripName){
+  const result=syncOneTrip(tripName, false);
+  if(result.fixed===0){toast(`✅「${tripName}」會議資料已是一致，無需修復`);return;}
+  saveSnapshot(); _skipNextSnapshot=1; await saveSchedule();
+  toast(`✅「${tripName}」已補齊 ${result.fixed} 處（${result.detail}）`);
   renderTrips();
+};
+
+// 全行程一致性檢查（owner 限定）
+window.checkAllTripsConsistency = async function(autoFix){
+  if(!isOwner){toast('🔒 此功能僅限擁有者使用');return;}
+  const log=document.getElementById('repairLog');
+  log.textContent='檢查中...\n';
+  const tripNames=new Set();
+  Object.values(scheduleData).forEach(arr=>{
+    arr.forEach(e=>{ if(e.type==='trip'&&e.text) tripNames.add(e.text); });
+  });
+  let totalIssues=0, fixedTrips=0;
+  for(const tn of tripNames){
+    const dry=syncOneTrip(tn, true);
+    if(dry.fixed>0){
+      totalIssues+=dry.fixed;
+      log.textContent+=`⚠️ ${tn}：${dry.fixed} 處不一致（${dry.detail}）\n`;
+      if(autoFix){
+        syncOneTrip(tn, false);
+        fixedTrips++;
+      }
+    }
+  }
+  if(totalIssues===0){
+    log.textContent+='\n✅ 所有行程的會議資料都一致！';
+  } else if(autoFix){
+    saveSnapshot(); _skipNextSnapshot=1; await saveSchedule();
+    log.textContent+=`\n✅ 已自動修復 ${fixedTrips} 個行程，共 ${totalIssues} 處`;
+    renderTrips();
+  } else {
+    log.textContent+=`\n共 ${totalIssues} 處不一致。點「✅ 全部自動修復」執行修復。`;
+  }
+  log.scrollTop=log.scrollHeight;
 };
 
 // -- set individual guide mode for a meeting --
