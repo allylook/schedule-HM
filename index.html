@@ -864,9 +864,20 @@ function setupListeners(){
           scheduleData[k]=arr;
         }
       });
+      // 先清除兩個會議室裡此行程此類型的舊記錄（換地點或取消地點時都要清）
+      const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[mt];
+      ['大會議室','小會議室'].forEach(room=>{
+        const rk=`${m}|${d}|${room}`;
+        if(!scheduleData[rk]) return;
+        scheduleData[rk]=scheduleData[rk].filter(e=>{
+          if(!e.text) return true;
+          if(!meetMatchesTrip(e.text,trip)) return true;
+          return !e.text.includes(typeLabel);
+        });
+        if(!scheduleData[rk].length) delete scheduleData[rk];
+      });
       // Sync to meeting room
       if(newLoc){
-        const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[mt];
         const roomKey=`${m}|${d}|${newLoc}`;
         if(!scheduleData[roomKey])scheduleData[roomKey]=[];
         const roomText=`${time?time+' ':''}${trip} ${typeLabel}`;
@@ -3034,6 +3045,17 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
         if(locMatch){savedLocationTag=locMatch[0];break;}
       }
     }
+    // 清除舊日期兩個會議室的此行程記錄（之後在新日期重建）
+    ['大會議室','小會議室'].forEach(room=>{
+      const rk=`${om}|${od}|${room}`;
+      if(!scheduleData[rk]) return;
+      scheduleData[rk]=scheduleData[rk].filter(e=>{
+        if(!e.text) return true;
+        if(!meetMatchesTrip(e.text,tripName)) return true;
+        return !e.text.includes(typeLabel2);
+      });
+      if(!scheduleData[rk].length) delete scheduleData[rk];
+    });
     tripGuides.forEach(g=>{
       const oldK=`${om}|${od}|${g}`;
       // 取出此成員原本的個人模式（線上/回看）
@@ -3061,6 +3083,16 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
         scheduleData[newK].push({type:meetType,text:newText});
       }
     });
+    // 在新日期重建會議室記錄（若原本有地點）
+    if(savedLocationTag){
+      const roomName=savedLocationTag.replace(/[\[\]]/g,'');
+      const roomKey2=`${nm}|${nd}|${roomName}`;
+      const roomText2=`${newTime?newTime+' ':''}${tripName} ${typeLabel2}`;
+      if(!scheduleData[roomKey2])scheduleData[roomKey2]=[];
+      if(!scheduleData[roomKey2].some(e=>e.text===roomText2)){
+        scheduleData[roomKey2].push({type:'meeting',text:roomText2});
+      }
+    }
     _skipNextSnapshot=1;
     saveSnapshot(); await saveSchedule();
     toast(`✅ 已更新「${tripName}」${typeLabel}`);
@@ -3424,6 +3456,20 @@ window.deleteMeeting = async function(trip, mt, m, d, time){
     });
     removed+=(before-scheduleData[k].length);
     if(!scheduleData[k].length) delete scheduleData[k];
+  });
+  // 同步清除兩個會議室的此筆會議記錄
+  const typeLabelDel={pre:'行前',hand:'交團',review:'檢討'}[mt];
+  ['大會議室','小會議室'].forEach(room=>{
+    const rk=m+'|'+d+'|'+room;
+    if(!scheduleData[rk]) return;
+    const before=scheduleData[rk].length;
+    scheduleData[rk]=scheduleData[rk].filter(e=>{
+      if(!e.text) return true;
+      if(!meetMatchesTrip(e.text,trip)) return true;
+      return !e.text.includes(typeLabelDel);
+    });
+    removed+=(before-scheduleData[rk].length);
+    if(!scheduleData[rk].length) delete scheduleData[rk];
   });
   console.log('[deleteMeeting result]', {trip, mt, m, d, time, removed, debug});
   const recKey=trip+'|'+mt;
