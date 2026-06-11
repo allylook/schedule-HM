@@ -3704,6 +3704,10 @@ async function loadNotifyLogs(){
     const url = `https://firestore.googleapis.com/v1/projects/qiushan-schedule/databases/(default)/documents/notifyLogs?pageSize=30`;
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     const json = await res.json();
+    if(json.error){
+      area.innerHTML = `<div style="color:#a01515;font-size:12px;">讀取失敗（${json.error.code}）：${json.error.message}<br>可能是 Firestore 安全規則未開放 notifyLogs 讀取權限。</div>`;
+      return;
+    }
     const docs = (json.documents || []).sort((a,b)=>{
       const da=a.fields?.date?.stringValue||'';
       const db2=b.fields?.date?.stringValue||'';
