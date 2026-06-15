@@ -402,9 +402,9 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
         <div class="q-card">
           <h4>查詢空閒領隊</h4>
           <div class="q-row">
-            <input type="date" id="qFreeStart" value="2026-09-05"/>
+            <input type="date" id="qFreeStart" value="2026-09-05" onchange="if(!this.dataset.touched){document.getElementById('qFreeEnd').value=this.value;}"/>
             <span style="color:var(--text2);font-size:12px">至</span>
-            <input type="date" id="qFreeEnd" value="2026-09-05"/>
+            <input type="date" id="qFreeEnd" value="2026-09-05" onchange="this.dataset.touched='1'"/>
             <button class="q-btn" onclick="queryFree()">查詢</button>
           </div>
         </div>
@@ -414,9 +414,9 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
             <select id="qMeetTrip" style="flex:1;min-width:120px;">
               <option value="">選擇行程（可選）</option>
             </select>
-            <input type="date" id="qMeetStart" value="2026-09-05"/>
+            <input type="date" id="qMeetStart" value="2026-09-05" onchange="if(!this.dataset.touched){document.getElementById('qMeetEnd').value=this.value;}"/>
             <span style="color:var(--text2);font-size:12px">至</span>
-            <input type="date" id="qMeetEnd" value="2026-09-05"/>
+            <input type="date" id="qMeetEnd" value="2026-09-05" onchange="this.dataset.touched='1'"/>
             <input type="text" id="qMeetTime" placeholder="時間（如 10:00）" style="width:110px"/>
             <button class="q-btn" style="background:#1f5c9e;color:#fff;" onclick="queryMeetingSlot()">查詢</button>
           </div>
