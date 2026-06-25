@@ -2975,7 +2975,8 @@ function openAddMeetingModal(tripName, meetType, passedGuides){
     tripGuides.forEach(g=>{
       const k=`${m}|${d}|${g}`;
       if(!scheduleData[k])scheduleData[k]=[];
-      const existing=scheduleData[k].some(e=>e.type===meetType);
+      // 只有「同行程」同類型已存在才跳過，不同行程的同 meetType 不影響
+      const existing=scheduleData[k].some(e=>e.type===meetType&&meetMatchesTrip(e.text,tripName));
       if(!existing){
         scheduleData[k].push({type:meetType,text});
         added++;
@@ -2983,6 +2984,7 @@ function openAddMeetingModal(tripName, meetType, passedGuides){
     });
     if(added===0){toast('⚠️ 該行程已有此會議記錄');modal.remove();return;}
     modal.remove();
+    _skipNextSnapshot=1;
     saveSnapshot(); await saveSchedule();
     toast(`✅ 已新增「${tripName}」${typeLabel} ${dateStr} ${timeStr}`);
     renderTrips();
