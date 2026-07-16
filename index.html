@@ -335,8 +335,7 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
     <div id="scheduleTab">
       <div class="left-panel">
         <div style="display:flex;gap:6px;margin-bottom:10px;">
-          <button id="yr2026" onclick="switchYear('2026')" style="flex:1;padding:5px;font-size:12px;font-weight:600;border-radius:6px;border:2px solid #999;background:#f8f9fc;color:#666;cursor:pointer;" title="舊版 2026 (唯讀)">2026🔒</button>
-          <button id="yr2026new" onclick="switchYear('2026-new')" style="flex:1;padding:5px;font-size:12px;font-weight:600;border-radius:6px;border:2px solid #1f5c9e;background:#1f5c9e;color:#fff;cursor:pointer;" title="新版 2026 (可編輯)">2026 ✨</button>
+          <button id="yr2026new" onclick="switchYear('2026-new')" style="flex:1;padding:5px;font-size:12px;font-weight:600;border-radius:6px;border:2px solid #1f5c9e;background:#1f5c9e;color:#fff;cursor:pointer;" title="2026 (可編輯)">2026</button>
           <button id="yr2027" onclick="switchYear('2027')" style="flex:1;padding:5px;font-size:12px;font-weight:600;border-radius:6px;border:2px solid #ccc;background:#f8f9fc;color:#666;cursor:pointer;">2027</button>
         </div>
         <div class="panel-title">月份</div>
@@ -769,11 +768,6 @@ onAuthStateChanged(auth, async user => {
     // 批次新增會議僅管理員可用（會動到跨人員的行程）
     const bmCard=document.getElementById('batchMeetingCard');
     if(bmCard) bmCard.style.display = isAdmin ? '' : 'none';
-    // 非 owner 隱藏舊版 2026 按鈕（封存）
-    if(!isOwner){
-      const oldBtn=document.getElementById('yr2026');
-      if(oldBtn) oldBtn.style.display='none';
-    }
     // 資料修復工具：只有 owner 可見
     const repairCard=document.getElementById('repairToolsCard');
     if(repairCard) repairCard.style.display = isOwner ? '' : 'none';
