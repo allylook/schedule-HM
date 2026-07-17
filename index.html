@@ -3523,7 +3523,7 @@ function openAddRoleModal(tripName, role){
     if(!tripRoles[tripName][role].includes(g)){
       tripRoles[tripName][role].push(g);
       await saveTripRoles();
-      // Auto-add existing meetings to this person
+      // Auto-add existing meetings to this person（目前分頁的資料庫）
       let added=0;
       ['pre','hand','review'].forEach(mt=>{
         Object.entries(scheduleData).forEach(([k,v])=>{
@@ -3541,9 +3541,31 @@ function openAddRoleModal(tripName, role){
           }
         });
       });
-      if(added>0){
+      // 同樣掃一次鄰年資料庫（例如行前開在前一年12月的情況）
+      let addedAdjacent=0;
+      if(adjacentDataKey(dataKey)){
+        await mutateScheduleEntries(true, (entries)=>{
+          ['pre','hand','review'].forEach(mt=>{
+            Object.entries(entries).forEach(([k,v])=>{
+              const parts=k.split('|');
+              if(parts.length<3) return;
+              const existingEntry=(v||[]).find(e=>e.type===mt&&meetMatchesTrip(e.text,tripName));
+              if(existingEntry){
+                const[m,d]=parts;
+                const nk=`${m}|${d}|${g}`;
+                if(!entries[nk])entries[nk]=[];
+                if(!entries[nk].some(e=>e.type===mt&&e.text===existingEntry.text)){
+                  entries[nk].push({...existingEntry});
+                  addedAdjacent++;
+                }
+              }
+            });
+          });
+        });
+      }
+      if(added>0||addedAdjacent>0){
         saveSnapshot(); await saveSchedule();
-        toast(`✅ 已新增${roleLabel}「${g}」，並同步 ${added} 筆會議記錄`);
+        toast(`✅ 已新增${roleLabel}「${g}」，並同步 ${added+addedAdjacent} 筆會議記錄`);
       } else {
         toast(`✅ 已新增${roleLabel}「${g}」`);
       }
@@ -3717,13 +3739,26 @@ window.checkAllTripsConsistency = async function(autoFix){
 window.setGuideMode = async function(trip, guide, mt, m, d, newMode, crossYear){
   if(!isAdmin){toast('需要管理員權限');return;}
   console.log('[setGuideMode]', {trip, guide, mt, m, d, newMode, crossYear});
-  let found=false;
+  let created=false;
   const ok=await mutateScheduleEntries(!!crossYear, (entries)=>{
     const k = m+'|'+d+'|'+guide;
     const arr = (entries[k]||[]).slice();
-    const idx = arr.findIndex(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
-    if(idx<0) return;
-    found=true;
+    let idx = arr.findIndex(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
+    if(idx<0){
+      // 這個人本來沒有自己的會議記錄（例如角色是後來才加入的）
+      // 找同一天同場會議任何一人的記錄當範本，幫他補建一筆
+      let template=null;
+      for(const kk of Object.keys(entries)){
+        const parts=kk.split('|'); if(parts.length<3) continue;
+        if(parseInt(parts[0])!==m||parseInt(parts[1])!==d) continue;
+        const found=(entries[kk]||[]).find(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
+        if(found){template=found;break;}
+      }
+      const baseText=template?template.text.replace(/\s*\[(線上|回看)\]/g,'').trim():trip;
+      arr.push({type:mt,text:baseText});
+      idx=arr.length-1;
+      created=true;
+    }
     let newText = arr[idx].text.replace(/\s*\[(線上|回看)\]/g, '').trim();
     if(newMode==='線上') newText += ' [線上]';
     else if(newMode==='回看') newText += ' [回看]';
@@ -3731,13 +3766,8 @@ window.setGuideMode = async function(trip, guide, mt, m, d, newMode, crossYear){
     entries[k] = arr;
   });
   if(!ok) return;
-  if(!found){
-    console.warn('[setGuideMode] no matching entry', {m,d,guide});
-    toast('⚠️ 找不到對應會議記錄（請看 Console）');
-    return;
-  }
   const typeLabel = {pre:'行前',hand:'交團',review:'檢討'}[mt];
-  toast('✅ '+guide+' '+typeLabel+'：'+newMode);
+  toast('✅ '+guide+' '+typeLabel+'：'+newMode+(created?'（已補建個人記錄）':''));
   renderTrips();
 };
 
