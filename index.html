@@ -1722,7 +1722,7 @@ window.renderTrips=function(){
           if(m.type!==mt)return false;
           return meetMatchesTrip(m.text, t.name);
         }).forEach(m=>{
-          if(!t.meetingData[mt].some(x=>x.m===m.m&&x.d===m.d&&x.text===m.text))
+          if(!t.meetingData[mt].some(x=>x.m===m.m&&x.d===m.d&&x.text===m.text&&x.guide===g))
             t.meetingData[mt].push({...m,guide:g,crossYear:m.crossYear||false});
         });
       });
