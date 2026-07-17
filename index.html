@@ -833,13 +833,15 @@ function setupListeners(){
       const date=locEl.dataset.date;
       const time=locEl.dataset.time;
       const newLoc=locEl.value;
+      const crossYear=locEl.dataset.cross==='1';
       const dm=date.match(/(\d{1,2})\/(\d{1,2})/);
       if(!dm) return;
       const m=parseInt(dm[1]),d=parseInt(dm[2]);
+      const sourceForCheck=crossYear?adjacentScheduleData:scheduleData;
       // 會議室衝突檢查：同日同會議室同時段已有其他行程
       if(newLoc){
         const roomKey=`${m}|${d}|${newLoc}`;
-        const roomEntries=scheduleData[roomKey]||[];
+        const roomEntries=sourceForCheck[roomKey]||[];
         const conflict=roomEntries.find(re=>{
           if(!re.text) return false;
           // 排除本行程自己的記錄
@@ -857,51 +859,52 @@ function setupListeners(){
           }
         }
       }
-      const roles2=tripRoles[trip]||{teamControl:[],business:[]};
-      // Find all people with THIS trip's meeting（用 meetMatchesTrip 避免跨梯次）
-      const meetPeople=new Set();
-      Object.entries(scheduleData).forEach(([k,v])=>{
-        const[km,kd,kg]=k.split('|');
-        if(kg==='大會議室'||kg==='小會議室') return;
-        if(parseInt(km)===m&&parseInt(kd)===d&&v.some(e=>e.type===mt&&meetMatchesTrip(e.text,trip))){
-          meetPeople.add(kg);
-        }
-      });
-      [...(roles2.teamControl||[]),...(roles2.business||[])].filter(g=>g&&g!=='__placeholder__').forEach(g=>meetPeople.add(g));
-      // Update location tag for all（只改本行程的會議）
-      meetPeople.forEach(g=>{
-        const k=`${m}|${d}|${g}`;
-        const arr=scheduleData[k]||[];
-        const idx=arr.findIndex(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
-        if(idx>=0){
-          let newText=arr[idx].text.replace(/\[(大會議室|小會議室)\]/g,'').trim();
-          if(newLoc) newText=newText+` [${newLoc}]`;
-          arr[idx]={...arr[idx],text:newText};
-          scheduleData[k]=arr;
-        }
-      });
-      // 先清除兩個會議室裡此行程此類型的舊記錄（換地點或取消地點時都要清）
       const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[mt];
-      ['大會議室','小會議室'].forEach(room=>{
-        const rk=`${m}|${d}|${room}`;
-        if(!scheduleData[rk]) return;
-        scheduleData[rk]=scheduleData[rk].filter(e=>{
-          if(!e.text) return true;
-          if(!meetMatchesTrip(e.text,trip)) return true;
-          return !e.text.includes(typeLabel);
+      const roles2=tripRoles[trip]||{teamControl:[],business:[]};
+      await mutateScheduleEntries(crossYear, (entries)=>{
+        // Find all people with THIS trip's meeting（用 meetMatchesTrip 避免跨梯次）
+        const meetPeople=new Set();
+        Object.entries(entries).forEach(([k,v])=>{
+          const[km,kd,kg]=k.split('|');
+          if(kg==='大會議室'||kg==='小會議室') return;
+          if(parseInt(km)===m&&parseInt(kd)===d&&v.some(e=>e.type===mt&&meetMatchesTrip(e.text,trip))){
+            meetPeople.add(kg);
+          }
         });
-        if(!scheduleData[rk].length) delete scheduleData[rk];
-      });
-      // Sync to meeting room
-      if(newLoc){
-        const roomKey=`${m}|${d}|${newLoc}`;
-        if(!scheduleData[roomKey])scheduleData[roomKey]=[];
-        const roomText=`${time?time+' ':''}${trip} ${typeLabel}`;
-        if(!scheduleData[roomKey].some(e=>e.text===roomText)){
-          scheduleData[roomKey].push({type:'meeting',text:roomText});
+        [...(roles2.teamControl||[]),...(roles2.business||[])].filter(g=>g&&g!=='__placeholder__').forEach(g=>meetPeople.add(g));
+        // Update location tag for all（只改本行程的會議）
+        meetPeople.forEach(g=>{
+          const k=`${m}|${d}|${g}`;
+          const arr=entries[k]||[];
+          const idx=arr.findIndex(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
+          if(idx>=0){
+            let newText=arr[idx].text.replace(/\[(大會議室|小會議室)\]/g,'').trim();
+            if(newLoc) newText=newText+` [${newLoc}]`;
+            arr[idx]={...arr[idx],text:newText};
+            entries[k]=arr;
+          }
+        });
+        // 先清除兩個會議室裡此行程此類型的舊記錄（換地點或取消地點時都要清）
+        ['大會議室','小會議室'].forEach(room=>{
+          const rk=`${m}|${d}|${room}`;
+          if(!entries[rk]) return;
+          entries[rk]=entries[rk].filter(e=>{
+            if(!e.text) return true;
+            if(!meetMatchesTrip(e.text,trip)) return true;
+            return !e.text.includes(typeLabel);
+          });
+          if(!entries[rk].length) delete entries[rk];
+        });
+        // Sync to meeting room
+        if(newLoc){
+          const roomKey=`${m}|${d}|${newLoc}`;
+          if(!entries[roomKey])entries[roomKey]=[];
+          const roomText=`${time?time+' ':''}${trip} ${typeLabel}`;
+          if(!entries[roomKey].some(e=>e.text===roomText)){
+            entries[roomKey].push({type:'meeting',text:roomText});
+          }
         }
-      }
-      saveSnapshot(); await saveSchedule();
+      });
       toast(`✅ 地點已設為${newLoc||'未指定'}${newLoc?'，已同步到'+newLoc:''}`);
       renderTrips();
       return;
@@ -953,7 +956,7 @@ function setupListeners(){
     if(action==='rename-trip') openRenameTripModal(trip);
     if(action==='add-guide') openAddGuideModal(trip);
     if(action==='add-meeting') openAddMeetingModal(trip, el.dataset.type, el.dataset.guides);
-    if(action==='edit-meeting') openEditMeetingModal(trip, el.dataset.type, el.dataset.date, el.dataset.time, el.dataset.mode);
+    if(action==='edit-meeting') openEditMeetingModal(trip, el.dataset.type, el.dataset.date, el.dataset.time, el.dataset.mode, el.dataset.cross==='1');
 
     if(action==='add-role') openAddRoleModal(trip, el.dataset.role);
     if(action==='remove-role'){
@@ -998,7 +1001,6 @@ function setupListeners(){
       }
       return;
     }
-    if(action==='edit-meeting') openEditMeetingModal(trip, el.dataset.type, el.dataset.date, el.dataset.time, el.dataset.mode);
   });
   // Holidays
   getDoc(doc(db,'config',`holidays_${curYear}`)).then(snap=>{
@@ -1791,7 +1793,7 @@ window.renderTrips=function(){
         const loc=items.find(item=>item.text.includes('[大會議室]'))?'🏢大':items.find(item=>item.text.includes('[小會議室]'))?'🏢小':'';
         const tripEsc=t.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
         const yearTag=grp.crossYear?`<span style="color:#888;font-weight:400;">（${adjacentYearNum}年）</span>`:'';
-        const delBtn=(isAdmin&&!grp.crossYear)?`<button onclick="event.stopPropagation();deleteMeeting('${tripEsc}','${mt}',${grp.m},${grp.d},'${grp.timeStr}')" style="cursor:pointer;background:#fee;color:#c62828;border:1px solid #f5a0a0;margin-left:6px;font-weight:bold;border-radius:50%;width:18px;height:18px;line-height:14px;padding:0;font-family:inherit;font-size:12px;" title="刪除此筆會議">×</button>`:'';
+        const delBtn=isAdmin?`<button onclick="event.stopPropagation();deleteMeeting('${tripEsc}','${mt}',${grp.m},${grp.d},'${grp.timeStr}',${grp.crossYear?'true':'false'})" style="cursor:pointer;background:#fee;color:#c62828;border:1px solid #f5a0a0;margin-left:6px;font-weight:bold;border-radius:50%;width:18px;height:18px;line-height:14px;padding:0;font-family:inherit;font-size:12px;" title="刪除此筆會議">×</button>`:'';
         return `<span class="meet-badge ${mt}">${label} ${display}${yearTag}${loc?' '+loc:''}${delBtn}</span>`;
       }).join('');
       // Calendar button (admin only)
@@ -1814,7 +1816,7 @@ window.renderTrips=function(){
         ...(tripRolesData.teamControl||[]),
         ...(tripRolesData.business||[])
       ])].filter(g=>g&&g!=='__placeholder__');
-      const guideModesHtml=(isAdmin&&!isCrossYearFirst)?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">
+      const guideModesHtml=isAdmin?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">
         ${allModeMembers.map(g=>{
           const gItem=items.find(i=>i.guide===g)||items[0];
           const gOnline=gItem&&gItem.text.includes('[線上]');
@@ -1823,7 +1825,7 @@ window.renderTrips=function(){
           const tripEsc2=t.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
           return `<span style="font-size:11px;display:flex;align-items:center;gap:3px;">
             <span style="color:var(--text2);">${g}：</span>
-            <select onchange="setGuideMode('${tripEsc2}','${g.replace(/'/g,"\\'")}','${mt}',${firstItem.m},${firstItem.d},this.value)"
+            <select onchange="setGuideMode('${tripEsc2}','${g.replace(/'/g,"\\'")}','${mt}',${firstItem.m},${firstItem.d},this.value,${isCrossYearFirst?'true':'false'})"
               style="font-size:11px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;">
               <option value="現場" ${gMode==='現場'?'selected':''}>現場</option>
               <option value="線上" ${gMode==='線上'?'selected':''}>線上</option>
@@ -1839,14 +1841,15 @@ window.renderTrips=function(){
         data-trip="${t.name.replace(/"/g,'&quot;')}"
         data-type="${mt}"
         data-date="${meetDateStr}"
-        data-time="${timeStr2}">
+        data-time="${timeStr2}"
+        data-cross="${isCrossYearFirst?'1':'0'}">
         <option value="" ${!curLoc?'selected':''}>地點（可選）</option>
         <option value="大會議室" ${curLoc==='大會議室'?'selected':''}>大會議室</option>
         <option value="小會議室" ${curLoc==='小會議室'?'selected':''}>小會議室</option>
       </select>`:'';
 
-      const crossYearNoteHtml=(isAdmin&&isCrossYearFirst)?`<div style="margin-top:5px;font-size:11px;color:#888;">此筆存在 ${adjacentYearNum} 年資料庫，請切到「${adjacentYearNum}」分頁編輯或發送行事曆</div>`:'';
-      const calBtnHtml=(isAdmin&&!isCrossYearFirst)?`<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      const yearNoteHtml=isCrossYearFirst?`<span style="font-size:11px;color:#888;">（${adjacentYearNum}年資料庫）</span>`:'';
+      const calBtnHtml=isAdmin?`<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         ${locSel}
         <button class="${btnClass}"
           data-trip="${t.name.replace(/"/g,'&quot;')}"
@@ -1855,6 +1858,7 @@ window.renderTrips=function(){
           data-date="${meetDateStr}"
           data-time="${timeStr2}"
           data-mode="${mode2}"
+          data-cross="${isCrossYearFirst?'1':'0'}"
           >${btnText}</button>
         <span style="font-size:11px;color:#1f5c9e;cursor:pointer;text-decoration:underline;"
           data-action="edit-meeting"
@@ -1862,9 +1866,11 @@ window.renderTrips=function(){
           data-type="${mt}"
           data-date="${meetDateStr}"
           data-time="${timeStr2}"
-          data-mode="${mode2}">✏️ 編輯</span>
+          data-mode="${mode2}"
+          data-cross="${isCrossYearFirst?'1':'0'}">✏️ 編輯</span>
+        ${yearNoteHtml}
         ${recordHtml}</div>`:'';
-      return `<div class="meet-card ${mt}">${badges}${guideModesHtml}${calBtnHtml}${crossYearNoteHtml}</div>`;
+      return `<div class="meet-card ${mt}">${badges}${guideModesHtml}${calBtnHtml}</div>`;
     };
 
     const meetHtml=['pre','hand','review'].map(fmtMeetings).join('');
@@ -2796,6 +2802,28 @@ async function writeEntriesToAdjacentYear(yearKey, mi, di, guidesArr, type, text
   }
   return {written:added, year:adj.year};
 }
+// 通用異動函式：crossYear=false 就地修改 scheduleData（目前分頁），
+// crossYear=true 則直接讀寫鄰年那份 Firestore 文件，讓「行程總覽」不管
+// 資料實際存在哪一年都能在同一頁編輯/刪除/發送行事曆
+async function mutateScheduleEntries(crossYear, mutatorFn){
+  if(!crossYear){
+    mutatorFn(scheduleData);
+    saveSnapshot();
+    _skipNextSnapshot=1;
+    await saveSchedule();
+    return true;
+  }
+  const adj=adjacentDataKey(dataKey);
+  if(!adj){toast('⚠️ 找不到鄰年資料庫');return false;}
+  const ref=doc(db,'schedule',adj.key);
+  const snap=await getDoc(ref);
+  const entries=snap.exists()?(snap.data().entries||{}):{};
+  mutatorFn(entries);
+  await setDoc(ref,{entries});
+  adjacentScheduleData=entries;
+  renderTrips();
+  return true;
+}
 
 async function loadCalInviteRecords(){
   try{
@@ -3268,16 +3296,18 @@ function openAddMeetingModal(tripName, meetType, passedGuides){
   };
 }
 
-function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
+function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode, crossYear){
   const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[meetType];
   const modal=document.createElement('div');
   modal.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:999;max-height:90vh;overflow-y:auto;';
   modal.className='trip-modal';
+  const yearHint=crossYear?`<div style="font-size:12px;color:#888;margin-bottom:10px;">📌 這筆存在 ${adjacentYearNum} 年資料庫</div>`:'';
   modal.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <h4 style="margin:0;color:#1f5c9e;">編輯「${tripName}」${typeLabel}</h4>
       <span onclick="this.closest('.trip-modal').remove()" style="cursor:pointer;font-size:18px;color:var(--text3);">×</span>
     </div>
+    ${yearHint}
     <div style="display:grid;gap:10px;margin-bottom:16px;">
       <div><label style="font-size:12px;color:var(--text3);">日期</label>
         <input type="text" id="emDate" value="${meetDate}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-top:4px;box-sizing:border-box;"></div>
@@ -3305,7 +3335,7 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
     const om=parseInt(oldDm[1]),od=parseInt(oldDm[2]);
     const nm=parseInt(newDm[1]),nd=parseInt(newDm[2]);
     const typeLabel2={pre:'行前',hand:'交團',review:'檢討'}[meetType];
-    // Find all guides + teamControl + business（排除會議室）
+    // Find all guides + teamControl + business（排除會議室）— 領隊名單一律以目前分頁的行程資料為準
     const tripGuides=new Set();
     Object.entries(scheduleData).forEach(([k,v])=>{
       const parts=k.split('|'); if(parts.length<3) return;
@@ -3314,66 +3344,67 @@ function openEditMeetingModal(tripName, meetType, meetDate, meetTime, meetMode){
     });
     const roles5=tripRoles[tripName]||{teamControl:[],business:[]};
     [...(roles5.teamControl||[]),...(roles5.business||[])].filter(g=>g&&g!=='__placeholder__').forEach(g=>tripGuides.add(g));
-    // 取出舊會議的地點 tag（要保留到新會議）
-    let savedLocationTag='';
-    for(const g of tripGuides){
-      const oldK=`${om}|${od}|${g}`;
-      const oldEntry=(scheduleData[oldK]||[]).find(e=>e.type===meetType&&meetMatchesTrip(e.text,tripName));
-      if(oldEntry){
-        const locMatch=oldEntry.text.match(/\[(大會議室|小會議室)\]/);
-        if(locMatch){savedLocationTag=locMatch[0];break;}
-      }
-    }
-    // 清除舊日期兩個會議室的此行程記錄（之後在新日期重建）
-    ['大會議室','小會議室'].forEach(room=>{
-      const rk=`${om}|${od}|${room}`;
-      if(!scheduleData[rk]) return;
-      scheduleData[rk]=scheduleData[rk].filter(e=>{
-        if(!e.text) return true;
-        if(!meetMatchesTrip(e.text,tripName)) return true;
-        return !e.text.includes(typeLabel2);
-      });
-      if(!scheduleData[rk].length) delete scheduleData[rk];
-    });
-    tripGuides.forEach(g=>{
-      const oldK=`${om}|${od}|${g}`;
-      // 取出此成員原本的個人模式（線上/回看）
-      let personalMode='';
-      if(scheduleData[oldK]){
-        const oldEntry=scheduleData[oldK].find(e=>e.type===meetType&&meetMatchesTrip(e.text,tripName));
+
+    await mutateScheduleEntries(!!crossYear, (entries)=>{
+      // 取出舊會議的地點 tag（要保留到新會議）
+      let savedLocationTag='';
+      for(const g of tripGuides){
+        const oldK=`${om}|${od}|${g}`;
+        const oldEntry=(entries[oldK]||[]).find(e=>e.type===meetType&&meetMatchesTrip(e.text,tripName));
         if(oldEntry){
-          const modeMatch=oldEntry.text.match(/\[(線上|回看)\]/);
-          if(modeMatch) personalMode=modeMatch[0];
+          const locMatch=oldEntry.text.match(/\[(大會議室|小會議室)\]/);
+          if(locMatch){savedLocationTag=locMatch[0];break;}
         }
-        // Remove old：必須是「此行程」的會議才刪
-        scheduleData[oldK]=scheduleData[oldK].filter(e=>!(e.type===meetType&&meetMatchesTrip(e.text,tripName)));
-        if(!scheduleData[oldK].length) delete scheduleData[oldK];
       }
-      // 若此成員沒有原本模式，套用 modal 上選的預設模式
-      if(!personalMode){
-        personalMode = newMode==='現場' ? '' : `[${newMode}]`;
-      }
-      // 組合此成員的新文字（保留個人模式 + 共用地點）
-      const parts=[newTime, tripName, typeLabel2, personalMode, savedLocationTag].filter(Boolean);
-      const newText=parts.join(' ');
-      const newK=`${nm}|${nd}|${g}`;
-      if(!scheduleData[newK])scheduleData[newK]=[];
-      if(!scheduleData[newK].some(e=>e.type===meetType&&e.text===newText)){
-        scheduleData[newK].push({type:meetType,text:newText});
+      // 清除舊日期兩個會議室的此行程記錄（之後在新日期重建）
+      ['大會議室','小會議室'].forEach(room=>{
+        const rk=`${om}|${od}|${room}`;
+        if(!entries[rk]) return;
+        entries[rk]=entries[rk].filter(e=>{
+          if(!e.text) return true;
+          if(!meetMatchesTrip(e.text,tripName)) return true;
+          return !e.text.includes(typeLabel2);
+        });
+        if(!entries[rk].length) delete entries[rk];
+      });
+      tripGuides.forEach(g=>{
+        const oldK=`${om}|${od}|${g}`;
+        // 取出此成員原本的個人模式（線上/回看）
+        let personalMode='';
+        if(entries[oldK]){
+          const oldEntry=entries[oldK].find(e=>e.type===meetType&&meetMatchesTrip(e.text,tripName));
+          if(oldEntry){
+            const modeMatch=oldEntry.text.match(/\[(線上|回看)\]/);
+            if(modeMatch) personalMode=modeMatch[0];
+          }
+          // Remove old：必須是「此行程」的會議才刪
+          entries[oldK]=entries[oldK].filter(e=>!(e.type===meetType&&meetMatchesTrip(e.text,tripName)));
+          if(!entries[oldK].length) delete entries[oldK];
+        }
+        // 若此成員沒有原本模式，套用 modal 上選的預設模式
+        if(!personalMode){
+          personalMode = newMode==='現場' ? '' : `[${newMode}]`;
+        }
+        // 組合此成員的新文字（保留個人模式 + 共用地點）
+        const parts=[newTime, tripName, typeLabel2, personalMode, savedLocationTag].filter(Boolean);
+        const newText=parts.join(' ');
+        const newK=`${nm}|${nd}|${g}`;
+        if(!entries[newK])entries[newK]=[];
+        if(!entries[newK].some(e=>e.type===meetType&&e.text===newText)){
+          entries[newK].push({type:meetType,text:newText});
+        }
+      });
+      // 在新日期重建會議室記錄（若原本有地點）
+      if(savedLocationTag){
+        const roomName=savedLocationTag.replace(/[\[\]]/g,'');
+        const roomKey2=`${nm}|${nd}|${roomName}`;
+        const roomText2=`${newTime?newTime+' ':''}${tripName} ${typeLabel2}`;
+        if(!entries[roomKey2])entries[roomKey2]=[];
+        if(!entries[roomKey2].some(e=>e.text===roomText2)){
+          entries[roomKey2].push({type:'meeting',text:roomText2});
+        }
       }
     });
-    // 在新日期重建會議室記錄（若原本有地點）
-    if(savedLocationTag){
-      const roomName=savedLocationTag.replace(/[\[\]]/g,'');
-      const roomKey2=`${nm}|${nd}|${roomName}`;
-      const roomText2=`${newTime?newTime+' ':''}${tripName} ${typeLabel2}`;
-      if(!scheduleData[roomKey2])scheduleData[roomKey2]=[];
-      if(!scheduleData[roomKey2].some(e=>e.text===roomText2)){
-        scheduleData[roomKey2].push({type:'meeting',text:roomText2});
-      }
-    }
-    _skipNextSnapshot=1;
-    saveSnapshot(); await saveSchedule();
     toast(`✅ 已更新「${tripName}」${typeLabel}`);
     modal.remove(); renderTrips();
   };
@@ -3683,73 +3714,78 @@ window.checkAllTripsConsistency = async function(autoFix){
 };
 
 // -- set individual guide mode for a meeting --
-window.setGuideMode = async function(trip, guide, mt, m, d, newMode){
+window.setGuideMode = async function(trip, guide, mt, m, d, newMode, crossYear){
   if(!isAdmin){toast('需要管理員權限');return;}
-  console.log('[setGuideMode]', {trip, guide, mt, m, d, newMode});
-  const k = m+'|'+d+'|'+guide;
-  const arr = (scheduleData[k]||[]).slice();
-  const idx = arr.findIndex(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
-  if(idx<0){
-    console.warn('[setGuideMode] no matching entry', {k, entries:arr});
+  console.log('[setGuideMode]', {trip, guide, mt, m, d, newMode, crossYear});
+  let found=false;
+  const ok=await mutateScheduleEntries(!!crossYear, (entries)=>{
+    const k = m+'|'+d+'|'+guide;
+    const arr = (entries[k]||[]).slice();
+    const idx = arr.findIndex(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
+    if(idx<0) return;
+    found=true;
+    let newText = arr[idx].text.replace(/\s*\[(線上|回看)\]/g, '').trim();
+    if(newMode==='線上') newText += ' [線上]';
+    else if(newMode==='回看') newText += ' [回看]';
+    arr[idx] = {...arr[idx], text:newText};
+    entries[k] = arr;
+  });
+  if(!ok) return;
+  if(!found){
+    console.warn('[setGuideMode] no matching entry', {m,d,guide});
     toast('⚠️ 找不到對應會議記錄（請看 Console）');
     return;
   }
-  // 移除舊的線上/回看標籤，加上新的
-  let newText = arr[idx].text.replace(/\s*\[(線上|回看)\]/g, '').trim();
-  if(newMode==='線上') newText += ' [線上]';
-  else if(newMode==='回看') newText += ' [回看]';
-  arr[idx] = {...arr[idx], text:newText};
-  scheduleData[k] = arr;
-  _skipNextSnapshot = 1;
-  saveSnapshot();
-  await saveSchedule();
   const typeLabel = {pre:'行前',hand:'交團',review:'檢討'}[mt];
   toast('✅ '+guide+' '+typeLabel+'：'+newMode);
   renderTrips();
 };
 
 // -- delete one meeting (called directly from onclick) --
-window.deleteMeeting = async function(trip, mt, m, d, time){
+window.deleteMeeting = async function(trip, mt, m, d, time, crossYear){
   if(!isAdmin){toast('需要管理員權限');return;}
-  console.log('[deleteMeeting called]', {trip, mt, m, d, time});
+  console.log('[deleteMeeting called]', {trip, mt, m, d, time, crossYear});
   const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[mt];
-  if(!confirm(`確定刪除「${trip}」${typeLabel} ${m}/${d}${time?' '+time:''}？\n會清除所有相關成員班表的此筆會議記錄。`)) return;
+  if(!confirm(`確定刪除「${trip}」${typeLabel} ${m}/${d}${time?' '+time:''}${crossYear?`（${adjacentYearNum}年資料庫）`:''}？\n會清除所有相關成員班表的此筆會議記錄。`)) return;
   let removed=0;
   const debug=[];
-  Object.keys(scheduleData).forEach(k=>{
-    const parts=k.split('|'); if(parts.length<3) return;
-    const km=parseInt(parts[0]), kd=parseInt(parts[1]);
-    if(km!==m||kd!==d) return;
-    const before=scheduleData[k].length;
-    scheduleData[k]=scheduleData[k].filter(e=>{
-      if(e.type!==mt) return true;
-      if(!e.text) return true;
-      if(!meetMatchesTrip(e.text, trip)) return true;
-      if(time){
-        const tm=e.text.match(/(\d{1,2}:\d{2})/)||(e.text.match(/(\d{4})/)?[null,e.text.match(/(\d{4})/)[1].replace(/(\d{2})(\d{2})/,'$1:$2')]:null);
-        const eTime=tm?tm[1]:'';
-        if(eTime!==time) return true;
-      }
-      debug.push(k+' :: '+e.text);
-      return false;
+  const ok=await mutateScheduleEntries(!!crossYear, (entries)=>{
+    Object.keys(entries).forEach(k=>{
+      const parts=k.split('|'); if(parts.length<3) return;
+      const km=parseInt(parts[0]), kd=parseInt(parts[1]);
+      if(km!==m||kd!==d) return;
+      const before=entries[k].length;
+      entries[k]=entries[k].filter(e=>{
+        if(e.type!==mt) return true;
+        if(!e.text) return true;
+        if(!meetMatchesTrip(e.text, trip)) return true;
+        if(time){
+          const tm=e.text.match(/(\d{1,2}:\d{2})/)||(e.text.match(/(\d{4})/)?[null,e.text.match(/(\d{4})/)[1].replace(/(\d{2})(\d{2})/,'$1:$2')]:null);
+          const eTime=tm?tm[1]:'';
+          if(eTime!==time) return true;
+        }
+        debug.push(k+' :: '+e.text);
+        return false;
+      });
+      removed+=(before-entries[k].length);
+      if(!entries[k].length) delete entries[k];
     });
-    removed+=(before-scheduleData[k].length);
-    if(!scheduleData[k].length) delete scheduleData[k];
-  });
-  // 同步清除兩個會議室的此筆會議記錄
-  const typeLabelDel={pre:'行前',hand:'交團',review:'檢討'}[mt];
-  ['大會議室','小會議室'].forEach(room=>{
-    const rk=m+'|'+d+'|'+room;
-    if(!scheduleData[rk]) return;
-    const before=scheduleData[rk].length;
-    scheduleData[rk]=scheduleData[rk].filter(e=>{
-      if(!e.text) return true;
-      if(!meetMatchesTrip(e.text,trip)) return true;
-      return !e.text.includes(typeLabelDel);
+    // 同步清除兩個會議室的此筆會議記錄
+    const typeLabelDel={pre:'行前',hand:'交團',review:'檢討'}[mt];
+    ['大會議室','小會議室'].forEach(room=>{
+      const rk=m+'|'+d+'|'+room;
+      if(!entries[rk]) return;
+      const before=entries[rk].length;
+      entries[rk]=entries[rk].filter(e=>{
+        if(!e.text) return true;
+        if(!meetMatchesTrip(e.text,trip)) return true;
+        return !e.text.includes(typeLabelDel);
+      });
+      removed+=(before-entries[rk].length);
+      if(!entries[rk].length) delete entries[rk];
     });
-    removed+=(before-scheduleData[rk].length);
-    if(!scheduleData[rk].length) delete scheduleData[rk];
   });
+  if(!ok) return;
   console.log('[deleteMeeting result]', {trip, mt, m, d, time, removed, debug});
   const recKey=trip+'|'+mt;
   if(calInviteRecords[recKey]){
@@ -3760,9 +3796,6 @@ window.deleteMeeting = async function(trip, mt, m, d, time){
     toast('⚠️ 找不到符合的會議記錄，請看 Console');
     return;
   }
-  saveSnapshot();
-  _skipNextSnapshot=1;
-  await saveSchedule();
   toast('✅ 已刪除「'+trip+'」'+typeLabel+'（清除 '+removed+' 筆）');
   renderTrips();
 };
@@ -4104,10 +4137,11 @@ window.openCalModal=function(btnEl){
   // Normalize time: 1500 -> 15:00
   const meetTime=rawTime2?rawTime2.replace(/^(\d{2})(\d{2})$/, '$1:$2'):rawTime2;
   const meetMode=btnEl.dataset.mode;
-  sendCalendarInvite(tripName,allGuides,meetType,meetDate,meetTime,meetMode,btnEl);
+  const crossYear=btnEl.dataset.cross==='1';
+  sendCalendarInvite(tripName,allGuides,meetType,meetDate,meetTime,meetMode,btnEl,crossYear);
 };
 
-window.sendCalendarInvite=async function(tripName,allGuides,meetType,meetDate,meetTime,meetMode,btnEl){
+window.sendCalendarInvite=async function(tripName,allGuides,meetType,meetDate,meetTime,meetMode,btnEl,crossYear){
   if(!isAdmin){toast('需要管理員權限');return;}
   const typeLabel={pre:'行前',hand:'交團',review:'檢討'}[meetType];
   const key=`${tripName}|${meetType}`;
@@ -4115,7 +4149,7 @@ window.sendCalendarInvite=async function(tripName,allGuides,meetType,meetDate,me
 
   // Show modal
   document.getElementById('calModalTitle').textContent=`📅 ${tripName} — ${typeLabel}`;
-  document.getElementById('calDateTime').textContent=meetDate+(meetTime?` ${meetTime}`:'');
+  document.getElementById('calDateTime').textContent=meetDate+(meetTime?` ${meetTime}`:'')+(crossYear?`（${adjacentYearNum}年）`:'');
   document.getElementById('calMode').textContent=meetMode||'現場';
   document.getElementById('calModal').style.display='flex';
 
@@ -4153,7 +4187,8 @@ window.sendCalendarInvite=async function(tripName,allGuides,meetType,meetDate,me
     let isoDate=meetDate;
     if(meetDate&&!meetDate.includes('-')){
       const[m,d]=meetDate.split('/');
-      isoDate=`${curYear}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const yearForIso=crossYear?adjacentYearNum:curYear;
+      isoDate=`${yearForIso}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     }
 
     await callWebApp('sendCalendar',{tripName,guides:selected,meetType,meetDate:isoDate,meetTime,meetMode:meetMode||'現場',uid});
