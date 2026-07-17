@@ -3738,12 +3738,14 @@ window.checkAllTripsConsistency = async function(autoFix){
 // -- set individual guide mode for a meeting --
 window.setGuideMode = async function(trip, guide, mt, m, d, newMode, crossYear){
   if(!isAdmin){toast('需要管理員權限');return;}
-  console.log('[setGuideMode]', {trip, guide, mt, m, d, newMode, crossYear});
+  console.log(`[setGuideMode] START trip=${trip} guide=${guide} mt=${mt} m=${m} d=${d} newMode=${newMode} crossYear=${crossYear}`);
   let created=false;
+  let finalText='';
   const ok=await mutateScheduleEntries(!!crossYear, (entries)=>{
     const k = m+'|'+d+'|'+guide;
     const arr = (entries[k]||[]).slice();
     let idx = arr.findIndex(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
+    console.log(`[setGuideMode] key=${k} existingIdx=${idx} existingEntries=${JSON.stringify(arr)}`);
     if(idx<0){
       // 這個人本來沒有自己的會議記錄（例如角色是後來才加入的）
       // 找同一天同場會議任何一人的記錄當範本，幫他補建一筆
@@ -3755,6 +3757,7 @@ window.setGuideMode = async function(trip, guide, mt, m, d, newMode, crossYear){
         if(found){template=found;break;}
       }
       const baseText=template?template.text.replace(/\s*\[(線上|回看)\]/g,'').trim():trip;
+      console.log(`[setGuideMode] no existing entry, creating with baseText="${baseText}"`);
       arr.push({type:mt,text:baseText});
       idx=arr.length-1;
       created=true;
@@ -3763,9 +3766,12 @@ window.setGuideMode = async function(trip, guide, mt, m, d, newMode, crossYear){
     if(newMode==='線上') newText += ' [線上]';
     else if(newMode==='回看') newText += ' [回看]';
     arr[idx] = {...arr[idx], text:newText};
+    finalText=newText;
+    console.log(`[setGuideMode] writing key=${k} finalText="${newText}"`);
     entries[k] = arr;
   });
-  if(!ok) return;
+  if(!ok){ console.log('[setGuideMode] FAILED mutateScheduleEntries returned false'); return; }
+  console.log(`[setGuideMode] DONE ok=${ok} created=${created} finalText="${finalText}"`);
   const typeLabel = {pre:'行前',hand:'交團',review:'檢討'}[mt];
   toast('✅ '+guide+' '+typeLabel+'：'+newMode+(created?'（已補建個人記錄）':''));
   renderTrips();
