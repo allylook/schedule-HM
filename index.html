@@ -2628,7 +2628,7 @@ function openGuideFilterModal(){
 }
 window.openGuideFilterModal=openGuideFilterModal;
 const HOL_2026 = {'1/1':'元旦','1/27':'農曆除夕補假','1/28':'農曆除夕','1/29':'春節','1/30':'春節','1/31':'春節','2/1':'春節','2/2':'春節','2/3':'初六補假','2/28':'和平紀念日','3/2':'和平紀念日補假','4/3':'兒童節補假','4/4':'兒童節','4/5':'清明節','5/1':'勞動節','5/31':'端午節','6/1':'端午節補假','9/25':'中秋節補假','9/26':'中秋節','9/27':'教師節','9/28':'教師節補假','10/9':'國慶日補假','10/10':'國慶日','10/26':'光復節補休','12/24':'假期','12/25':'行憲紀念日'};
-const HOL_2027 = {'1/1':'元旦','2/15':'除夕','2/16':'春節','2/17':'春節','2/18':'春節','2/19':'春節','2/20':'春節','2/28':'和平紀念日','3/1':'和平紀念日補假','4/4':'兒童節兼清明節','5/1':'勞動節','5/20':'端午節','9/15':'中秋節','9/16':'教師節補假','9/17':'中秋節補假','10/10':'國慶日','10/11':'國慶日補假','12/25':'行憲紀念日'};
+const HOL_2027 = {'1/1':'元旦','2/4':'小年夜','2/5':'除夕','2/6':'春節(初一)','2/7':'春節(初二)','2/8':'春節(初三)','2/9':'初一補假','2/10':'初二補假','2/28':'和平紀念日','3/1':'和平紀念日補假','4/4':'兒童節','4/5':'清明節','4/6':'兒童節補假','4/30':'勞動節補假','5/1':'勞動節','6/9':'端午節','9/15':'中秋節','9/28':'教師節','10/10':'國慶日','10/11':'國慶日補假','10/25':'臺灣光復節','12/24':'行憲紀念日補假','12/25':'行憲紀念日','12/31':'開國紀念日補假'};
 
 async function switchYear(yearKey){
   // yearKey 可以是 '2026', '2026-new', '2027' 等
@@ -2950,7 +2950,10 @@ function openAddGuideModal(tripName){
 function parseDateOrRange(str){
   const rM=str.match(/(\d{1,2})[\/月](\d{1,2})\s*[~～-]\s*(\d{1,2})[\/月](\d{1,2})/);
   if(rM){
-    return {first:new Date(curYear,parseInt(rM[1])-1,parseInt(rM[2])),last:new Date(curYear,parseInt(rM[3])-1,parseInt(rM[4]))};
+    const first=new Date(curYear,parseInt(rM[1])-1,parseInt(rM[2]));
+    const last=new Date(curYear,parseInt(rM[3])-1,parseInt(rM[4]));
+    if(last<first) return {crossYear:true};
+    return {first,last};
   }
   const sM=str.match(/(\d{1,2})[\/月](\d{1,2})/);
   if(sM){
@@ -3022,6 +3025,7 @@ function openBatchMeetingModal(){
     const selectedGuides=[...modal.querySelectorAll('.bmGuide:checked')].map(c=>c.value);
     const range=parseDateOrRange(dateStr);
     if(!range){toast('⚠️ 日期格式錯誤');return;}
+    if(range.crossYear){toast(`⚠️ 日期範圍跨年度，請分開新增：${curYear} 年的部分在這個分頁做，${curYear+1} 年的部分請切到 ${curYear+1} 分頁再做一次`);return;}
     if(!selectedGuides.length){toast('⚠️ 請至少選一位人員');return;}
     const typeLabel={meeting:'會議',share:'分享會',explore:'探路'}[type];
     const text=[timeStr,title].filter(Boolean).join(' ')||typeLabel;
@@ -3097,6 +3101,7 @@ function openBatchLeaveModal(){
     if(!selectedGuides.length){toast('⚠️ 請至少選一位人員');return;}
     const range=parseDateOrRange(endStr?`${startStr}~${endStr}`:startStr);
     if(!range){toast('⚠️ 日期格式錯誤');return;}
+    if(range.crossYear){toast(`⚠️ 日期範圍跨年度，請分開新增：${curYear} 年的部分在這個分頁做，${curYear+1} 年的部分請切到 ${curYear+1} 分頁再做一次`);return;}
     const text=note||'請假';
     let filled=0;
     let cur=new Date(range.first);
