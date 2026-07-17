@@ -3736,6 +3736,15 @@ window.checkAllTripsConsistency = async function(autoFix){
 };
 
 // -- set individual guide mode for a meeting --
+// 除錯用：在主控台輸入 debugKey('2|18|Ginny') 查目前分頁資料庫的原始內容
+window.debugKey = function(k){
+  console.log(`[debugKey] dataKey=${dataKey} key=${k} =>`, JSON.stringify(scheduleData[k]));
+  const adj=adjacentDataKey(dataKey);
+  if(adj){
+    console.log(`[debugKey] adjacent(${adj.key}) key=${k} =>`, JSON.stringify(adjacentScheduleData[k]));
+  }
+};
+
 window.setGuideMode = async function(trip, guide, mt, m, d, newMode, crossYear){
   if(!isAdmin){toast('需要管理員權限');return;}
   console.log(`[setGuideMode] START trip=${trip} guide=${guide} mt=${mt} m=${m} d=${d} newMode=${newMode} crossYear=${crossYear}`);
