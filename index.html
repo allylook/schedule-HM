@@ -1818,19 +1818,21 @@ window.renderTrips=function(){
       ])].filter(g=>g&&g!=='__placeholder__');
       const guideModesHtml=isAdmin?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">
         ${allModeMembers.map(g=>{
-          const gItem=items.find(i=>i.guide===g)||items[0];
+          const gItemFound=items.find(i=>i.guide===g);
+          const gItem=gItemFound||items[0];
+          const gCrossYear=gItemFound?!!gItemFound.crossYear:false;
           const gOnline=gItem&&gItem.text.includes('[線上]');
           const gRecord=gItem&&gItem.text.includes('[回看]');
           const gMode=gRecord?'回看':gOnline?'線上':'現場';
           const tripEsc2=t.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
           return `<span style="font-size:11px;display:flex;align-items:center;gap:3px;">
             <span style="color:var(--text2);">${g}：</span>
-            <select onchange="setGuideMode('${tripEsc2}','${g.replace(/'/g,"\\'")}','${mt}',${firstItem.m},${firstItem.d},this.value,${isCrossYearFirst?'true':'false'})"
+            <select onchange="setGuideMode('${tripEsc2}','${g.replace(/'/g,"\\'")}','${mt}',${firstItem.m},${firstItem.d},this.value,${gCrossYear?'true':'false'})"
               style="font-size:11px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;">
               <option value="現場" ${gMode==='現場'?'selected':''}>現場</option>
               <option value="線上" ${gMode==='線上'?'selected':''}>線上</option>
               <option value="回看" ${gMode==='回看'?'selected':''}>回看</option>
-            </select></span>`;
+            </select>${gCrossYear?`<span style="color:#888;">(${adjacentYearNum})</span>`:''}</span>`;
         }).join('')}
       </div>`:'';
 
