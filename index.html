@@ -1733,6 +1733,7 @@ window.renderTrips=function(){
     t.hasMissing=t.missingPre||t.missingHand||t.missingReview;
     return t;
   });
+  window._lastTrips=trips; // 除錯用：主控台輸入 debugTrip('行程名稱關鍵字')
 
   // Filter
   let filtered=trips.filter(t=>{
@@ -3739,6 +3740,14 @@ window.checkAllTripsConsistency = async function(autoFix){
 
 // -- set individual guide mode for a meeting --
 // 除錯用：在主控台輸入 debugKey('2|18|Ginny') 查目前分頁資料庫的原始內容
+// 除錯用：在主控台輸入 debugTrip('塔斯') 查某行程目前的會議資料明細
+window.debugTrip = function(keyword){
+  const t=(window._lastTrips||[]).find(x=>x.name.includes(keyword));
+  if(!t){ console.log('[debugTrip] 找不到符合的行程，先切到行程總覽分頁再試一次'); return; }
+  console.log(`[debugTrip] name=${t.name}`);
+  console.log(`[debugTrip] review items:`, JSON.stringify(t.meetingData.review,null,2));
+};
+
 window.debugKey = function(k){
   console.log(`[debugKey] dataKey=${dataKey} key=${k} =>`, JSON.stringify(scheduleData[k]));
   const adj=adjacentDataKey(dataKey);
