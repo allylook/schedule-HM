@@ -1012,6 +1012,7 @@ function setupListeners(){
   });
   // Schedule
   const schedRef = doc(db,'schedule',dataKey);
+  loadAdjacentScheduleData(dataKey);
   unsubSchedule = onSnapshot(schedRef, snap => {
     if(_skipNextSnapshot>0){ _skipNextSnapshot--; return; }
     // 本地寫入產生的快照不重繪（資料已是最新，避免打斷使用者操作）
@@ -1689,6 +1690,16 @@ window.renderTrips=function(){
       }
     });
   });
+  // 補上鄰年資料庫裡的行前/交團/檢討（例如 2027 年 1 月團的行前開在 2026 年 12 月）
+  Object.entries(adjacentScheduleData).forEach(([k,entries])=>{
+    const[m,d,g]=k.split('|');
+    const mi=parseInt(m),di=parseInt(d);
+    entries.forEach(e=>{
+      if(!['pre','hand','review'].includes(e.type)) return;
+      if(!meetingsByGuide[g])meetingsByGuide[g]=[];
+      meetingsByGuide[g].push({type:e.type,text:e.text,m:mi,d:di,crossYear:true});
+    });
+  });
 
   // Build trip objects with meetings
   const trips=Object.values(tripMap).map(t=>{
@@ -1710,7 +1721,7 @@ window.renderTrips=function(){
           return meetMatchesTrip(m.text, t.name);
         }).forEach(m=>{
           if(!t.meetingData[mt].some(x=>x.m===m.m&&x.d===m.d&&x.text===m.text))
-            t.meetingData[mt].push({...m,guide:g});
+            t.meetingData[mt].push({...m,guide:g,crossYear:m.crossYear||false});
         });
       });
     });
@@ -1764,7 +1775,7 @@ window.renderTrips=function(){
         const timeM=item.text.match(/(\d{1,2}:\d{2})/) || (item.text.match(/(\d{4})/) ? [null, item.text.match(/(\d{4})/)[1].replace(/(\d{2})(\d{2})/, '$1:$2')] : null);
         const timeStr=timeM?timeM[1]:'';
         const key=`${item.m}/${item.d}|${timeStr}`;
-        if(!dateGroups[key]) dateGroups[key]={m:item.m,d:item.d,timeStr,guides:[]};
+        if(!dateGroups[key]) dateGroups[key]={m:item.m,d:item.d,timeStr,guides:[],crossYear:item.crossYear||false};
         const isOnline=item.text.includes('[線上]');
         const isRecord=item.text.includes('[回看]');
         const mode=isRecord?'回看':isOnline?'線上':'現場';
@@ -1779,8 +1790,9 @@ window.renderTrips=function(){
         const display=[`${grp.m}/${grp.d}`,grp.timeStr,modes.length>1?`（${modeText}）`:modeText].filter(Boolean).join(' ');
         const loc=items.find(item=>item.text.includes('[大會議室]'))?'🏢大':items.find(item=>item.text.includes('[小會議室]'))?'🏢小':'';
         const tripEsc=t.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
-        const delBtn=isAdmin?`<button onclick="event.stopPropagation();deleteMeeting('${tripEsc}','${mt}',${grp.m},${grp.d},'${grp.timeStr}')" style="cursor:pointer;background:#fee;color:#c62828;border:1px solid #f5a0a0;margin-left:6px;font-weight:bold;border-radius:50%;width:18px;height:18px;line-height:14px;padding:0;font-family:inherit;font-size:12px;" title="刪除此筆會議">×</button>`:'';
-        return `<span class="meet-badge ${mt}">${label} ${display}${loc?' '+loc:''}${delBtn}</span>`;
+        const yearTag=grp.crossYear?`<span style="color:#888;font-weight:400;">（${adjacentYearNum}年）</span>`:'';
+        const delBtn=(isAdmin&&!grp.crossYear)?`<button onclick="event.stopPropagation();deleteMeeting('${tripEsc}','${mt}',${grp.m},${grp.d},'${grp.timeStr}')" style="cursor:pointer;background:#fee;color:#c62828;border:1px solid #f5a0a0;margin-left:6px;font-weight:bold;border-radius:50%;width:18px;height:18px;line-height:14px;padding:0;font-family:inherit;font-size:12px;" title="刪除此筆會議">×</button>`:'';
+        return `<span class="meet-badge ${mt}">${label} ${display}${yearTag}${loc?' '+loc:''}${delBtn}</span>`;
       }).join('');
       // Calendar button (admin only)
       const firstItem=items[0];
@@ -1793,6 +1805,8 @@ window.renderTrips=function(){
       const btnClass=record?'cal-btn sent':'cal-btn';
       const btnText=record?'✅ 已發送':'📅 發送行事曆';
 
+      const isCrossYearFirst=!!firstItem.crossYear;
+
       // Per-guide mode selectors (admin only) — 包含領隊、團控、業務
       const tripRolesData=tripRoles[t.name]||{teamControl:[],business:[]};
       const allModeMembers=[...new Set([
@@ -1800,7 +1814,7 @@ window.renderTrips=function(){
         ...(tripRolesData.teamControl||[]),
         ...(tripRolesData.business||[])
       ])].filter(g=>g&&g!=='__placeholder__');
-      const guideModesHtml=isAdmin?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">
+      const guideModesHtml=(isAdmin&&!isCrossYearFirst)?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">
         ${allModeMembers.map(g=>{
           const gItem=items.find(i=>i.guide===g)||items[0];
           const gOnline=gItem&&gItem.text.includes('[線上]');
@@ -1831,7 +1845,8 @@ window.renderTrips=function(){
         <option value="小會議室" ${curLoc==='小會議室'?'selected':''}>小會議室</option>
       </select>`:'';
 
-      const calBtnHtml=isAdmin?`<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      const crossYearNoteHtml=(isAdmin&&isCrossYearFirst)?`<div style="margin-top:5px;font-size:11px;color:#888;">此筆存在 ${adjacentYearNum} 年資料庫，請切到「${adjacentYearNum}」分頁編輯或發送行事曆</div>`:'';
+      const calBtnHtml=(isAdmin&&!isCrossYearFirst)?`<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         ${locSel}
         <button class="${btnClass}"
           data-trip="${t.name.replace(/"/g,'&quot;')}"
@@ -1849,7 +1864,7 @@ window.renderTrips=function(){
           data-time="${timeStr2}"
           data-mode="${mode2}">✏️ 編輯</span>
         ${recordHtml}</div>`:'';
-      return `<div class="meet-card ${mt}">${badges}${guideModesHtml}${calBtnHtml}</div>`;
+      return `<div class="meet-card ${mt}">${badges}${guideModesHtml}${calBtnHtml}${crossYearNoteHtml}</div>`;
     };
 
     const meetHtml=['pre','hand','review'].map(fmtMeetings).join('');
@@ -2685,6 +2700,9 @@ async function switchYear(yearKey){
     safeRenderAll();
   });
   curMonth=1;
+  await loadAdjacentScheduleData(yearKey);
+  const ttForRerender=document.getElementById('tripsTab');
+  if(ttForRerender&&ttForRerender.style.display!=='none') renderTrips();
   // Update title displays
   const labelMap={'2026':'2026 (舊唯讀)','2026-new':'2026','2027':'2027'};
   const dispLabel=labelMap[yearKey]||yearKey;
@@ -2742,6 +2760,22 @@ window.switchYear=switchYear;
 const CALENDAR_WEB_APP = 'https://script.google.com/macros/s/AKfycbxjBCxoFsvwZfQJlyOaLXvBw7KpLqUe0iYTDo6v4EWl4oNiDGGscvguTz8wF0uwvMrq/exec';
 let calInviteRecords = {};
 let tripRoles = {}; // {tripName: {teamControl:[], business:[]}}
+let adjacentScheduleData = {}; // 跨年度唯讀補充資料（只用來讓行程總覽找到 12月的行前等會議）
+let adjacentYearNum = null;
+function adjacentDataKey(yearKey){
+  if(yearKey==='2026-new') return {key:'2027', year:2027};
+  if(yearKey==='2027') return {key:'2026-new', year:2026};
+  return null;
+}
+async function loadAdjacentScheduleData(yearKey){
+  const adj = adjacentDataKey(yearKey);
+  if(!adj){ adjacentScheduleData={}; adjacentYearNum=null; return; }
+  try{
+    const snap = await getDoc(doc(db,'schedule',adj.key));
+    adjacentScheduleData = snap.exists() ? (snap.data().entries||{}) : {};
+    adjacentYearNum = adj.year;
+  }catch(e){ adjacentScheduleData={}; adjacentYearNum=null; }
+}
 
 async function loadCalInviteRecords(){
   try{
