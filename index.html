@@ -3740,13 +3740,19 @@ window.setGuideMode = async function(trip, guide, mt, m, d, newMode, crossYear){
   if(!isAdmin){toast('需要管理員權限');return;}
   console.log(`[setGuideMode] START trip=${trip} guide=${guide} mt=${mt} m=${m} d=${d} newMode=${newMode} crossYear=${crossYear}`);
   let created=false;
+  let dupCount=0;
   let finalText='';
   const ok=await mutateScheduleEntries(!!crossYear, (entries)=>{
     const k = m+'|'+d+'|'+guide;
     const arr = (entries[k]||[]).slice();
-    let idx = arr.findIndex(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
-    console.log(`[setGuideMode] key=${k} existingIdx=${idx} existingEntries=${JSON.stringify(arr)}`);
-    if(idx<0){
+    const matches = arr.filter(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
+    const others = arr.filter(e=>!(e.type===mt&&meetMatchesTrip(e.text,trip)));
+    console.log(`[setGuideMode] key=${k} matches=${JSON.stringify(matches)}`);
+    if(matches.length>1) dupCount=matches.length-1;
+    let baseText;
+    if(matches.length>0){
+      baseText = matches[0].text.replace(/\s*\[(線上|回看)\]/g,'').trim();
+    } else {
       // 這個人本來沒有自己的會議記錄（例如角色是後來才加入的）
       // 找同一天同場會議任何一人的記錄當範本，幫他補建一筆
       let template=null;
@@ -3756,24 +3762,21 @@ window.setGuideMode = async function(trip, guide, mt, m, d, newMode, crossYear){
         const found=(entries[kk]||[]).find(e=>e.type===mt&&meetMatchesTrip(e.text,trip));
         if(found){template=found;break;}
       }
-      const baseText=template?template.text.replace(/\s*\[(線上|回看)\]/g,'').trim():trip;
-      console.log(`[setGuideMode] no existing entry, creating with baseText="${baseText}"`);
-      arr.push({type:mt,text:baseText});
-      idx=arr.length-1;
+      baseText=template?template.text.replace(/\s*\[(線上|回看)\]/g,'').trim():trip;
       created=true;
+      console.log(`[setGuideMode] no existing entry, creating with baseText="${baseText}"`);
     }
-    let newText = arr[idx].text.replace(/\s*\[(線上|回看)\]/g, '').trim();
+    let newText = baseText;
     if(newMode==='線上') newText += ' [線上]';
     else if(newMode==='回看') newText += ' [回看]';
-    arr[idx] = {...arr[idx], text:newText};
     finalText=newText;
-    console.log(`[setGuideMode] writing key=${k} finalText="${newText}"`);
-    entries[k] = arr;
+    console.log(`[setGuideMode] writing key=${k} finalText="${newText}" (移除 ${dupCount} 筆重複)`);
+    entries[k] = [...others, {type:mt,text:newText}];
   });
   if(!ok){ console.log('[setGuideMode] FAILED mutateScheduleEntries returned false'); return; }
-  console.log(`[setGuideMode] DONE ok=${ok} created=${created} finalText="${finalText}"`);
+  console.log(`[setGuideMode] DONE ok=${ok} created=${created} dupCount=${dupCount} finalText="${finalText}"`);
   const typeLabel = {pre:'行前',hand:'交團',review:'檢討'}[mt];
-  toast('✅ '+guide+' '+typeLabel+'：'+newMode+(created?'（已補建個人記錄）':''));
+  toast('✅ '+guide+' '+typeLabel+'：'+newMode+(created?'（已補建個人記錄）':'')+(dupCount>0?`（已清除 ${dupCount} 筆重複記錄）`:''));
   renderTrips();
 };
 
