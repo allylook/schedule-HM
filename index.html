@@ -676,7 +676,7 @@ select:focus,input:focus{border-color:#1f5c9e;box-shadow:0 0 0 2px #cce0ff;}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, query, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCi_-ARDDU1KadQ6vNkjSISNcqMnBPA6Mo",
@@ -4371,11 +4371,18 @@ async function loadAdminUsers(){
         <option value="guide" ${u.role==='guide'?'selected':''}>領隊</option>
         <option value="viewer" ${u.role==='viewer'?'selected':''}>檢視</option>
       </select>
-      <button class="save-role-btn" data-uid="${d.id}">儲存</button>`;
+      <button class="save-role-btn" data-uid="${d.id}">儲存</button>
+      <button class="del-user-btn" data-uid="${d.id}" style="padding:6px 12px;background:#fee;color:#c62828;border:1px solid #f5a0a0;border-radius:6px;cursor:pointer;font-family:inherit;margin-left:6px;">刪除</button>`;
     row.querySelector('.save-role-btn').onclick=async()=>{
       const role=row.querySelector('.role-select').value;
       await setDoc(doc(db,'users',d.id),{...u,role});
       toast('已更新權限');
+    };
+    row.querySelector('.del-user-btn').onclick=async()=>{
+      if(!confirm(`確定要刪除「${u.name||u.email||d.id}」的登入帳號嗎？\n（只會移除他登入本系統的權限，不會刪除班表資料。如果他也在領隊/團控/業務名單裡，那部分要另外去移除。）`)) return;
+      await deleteDoc(doc(db,'users',d.id));
+      toast(`已刪除「${u.name||u.email}」的帳號`);
+      loadAdminUsers();
     };
     ul.appendChild(row);
   });
